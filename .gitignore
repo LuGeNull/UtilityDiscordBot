@@ -1,5 +1,25 @@
+# Build-Output
 bin/
 obj/
-/packages/
-riderModule.iml
-/_ReSharper.Caches/
+
+# Rider/JetBrains-spezifisch
+.idea/
+*.sln.iml
+
+# User-spezifische Einstellungen
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Paketverwaltung
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+
+# Logdateien
+*.log
+
+# Umgebungsvariablen/Secrets
+.env
