@@ -44,14 +44,65 @@ public class DiscordService
 
         if (message.Content.StartsWith("!interested"))
         {
-            if (message.Author is SocketGuildUser guildUser)
+            
+            var NichtBenachrichtigungszeitraum = message.Content.Split(' ');
+            var nichtbenachrichtigungsZeitraumVon = 0;
+            var nichtbenachrichtigungsZeitraumBis = 0;
+            var IstEingabeErfolgreichGewesen = UeberpruefeEingabe(message, NichtBenachrichtigungszeitraum, out nichtbenachrichtigungsZeitraumVon, out nichtbenachrichtigungsZeitraumBis);
+            
+            
+            if (message.Author is SocketGuildUser guildUser && IstEingabeErfolgreichGewesen)
             {
-                _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id,guildUser.Guild.Id);
+                _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id,guildUser.Guild.Id, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis);
                 var resultMessage = await message.Channel.SendMessageAsync("I'll notify you!");
             }
         }
     }
-    
+
+    private static bool UeberpruefeEingabe(SocketMessage message, string[] NichtBenachrichtigungszeitraum,
+        out int nichtbenachrichtigungsZeitraumVon, out int nichtbenachrichtigungsZeitraumBis)
+    {
+        if (NichtBenachrichtigungszeitraum.Length > 2)
+        {
+            try
+            {
+                nichtbenachrichtigungsZeitraumVon = int.Parse(NichtBenachrichtigungszeitraum[1]);
+                nichtbenachrichtigungsZeitraumBis = int.Parse(NichtBenachrichtigungszeitraum[2]);
+                if (nichtbenachrichtigungsZeitraumVon < 0 || nichtbenachrichtigungsZeitraumVon > 24)
+                { 
+                     SendeNachrichtBeiFehlerhafterEingabe(message);
+                     return false;
+                }
+                if (nichtbenachrichtigungsZeitraumBis < 0 || nichtbenachrichtigungsZeitraumBis > 24)
+                {
+                    SendeNachrichtBeiFehlerhafterEingabe(message);
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                SendeNachrichtBeiFehlerhafterEingabe(message);
+                    
+            }
+        }
+        else
+        {
+            nichtbenachrichtigungsZeitraumVon = -1;
+            nichtbenachrichtigungsZeitraumBis = -1;
+            return true;
+        }
+        nichtbenachrichtigungsZeitraumVon = -1;
+        nichtbenachrichtigungsZeitraumBis = -1;
+        return false;
+    }
+
+    private static async Task SendeNachrichtBeiFehlerhafterEingabe(SocketMessage message)
+    {
+        await message.Channel.SendMessageAsync("Das war nicht richtig minjung -> !Interested 7 14 <- Informiert dich zwischen 14.01 bis 6:59");
+    }
+
     private Task LogAsync(LogMessage log)
     {
         Console.WriteLine(log.ToString());

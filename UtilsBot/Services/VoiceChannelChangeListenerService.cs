@@ -18,9 +18,9 @@ public class VoiceChannelChangeListenerService
         _guilds = new List<Guild>();
     }
 
-    public void AddUserToInterestedPeopleList(ulong userId, ulong guildId)
+    public void AddUserToInterestedPeopleList(ulong userId, ulong guildId, int nichtbenachrichtigungsZeitraumVon, int nichtbenachrichtigungsZeitraumBis)
     {
-        _database.AddInterestedPeople(new InterestedPeople(userId,guildId));
+        _database.AddInterestedPeople(new InterestedPeople(userId,guildId, nichtbenachrichtigungsZeitraumVon,nichtbenachrichtigungsZeitraumBis));
     }
     
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
@@ -65,17 +65,28 @@ public class VoiceChannelChangeListenerService
         DiscordSocketClient client)
     {
         var alleUserDieBereitsImVoiceChannelSind = inFrageKommendeVoiceChannel.SelectMany(c => c.ConnectedUsers).ToList();
-        var interesiertePersonen = _database.GetInterestedPeople(guildId, alleUserDieBereitsImVoiceChannelSind).ToList();
-        NachrichtenVerschicken(interesiertePersonen,inFrageKommendeVoiceChannel, client);
+        var interesiertePersonen =
+            _database.HoleInteressiertePersoneDieNichtImVoiceChannelSind(guildId, alleUserDieBereitsImVoiceChannelSind).ToList();
+        
+        NachrichtenVerschicken(interesiertePersonen, inFrageKommendeVoiceChannel, client);
     }
 
-    private void NachrichtenVerschicken(List<InterestedPeople> interesiertePersonen,
+    private async Task NachrichtenVerschicken(List<InterestedPeople> interesiertePersonen,
         List<SocketVoiceChannel> inFrageKommendeVoiceChannel, DiscordSocketClient client)
     {
-        var channelMitMeistenUsern = HoleChannelMitMeistenUsern(inFrageKommendeVoiceChannel);
         foreach (var interessiertePerson in interesiertePersonen)
         {
-            client.GetUser(interessiertePerson.UserId).SendMessageAsync($"Auf dem Server {channelMitMeistenUsern.Guild.Name} im Channel {channelMitMeistenUsern.Name} geht was ab!");
+            var channelMitMeistenUsern = inFrageKommendeVoiceChannel.Where(c => c.Users.Select(u => u.Id).Contains(interessiertePerson.UserId)).OrderByDescending(c => c.ConnectedUsers).FirstOrDefault();
+            if (channelMitMeistenUsern == null)
+            {
+                continue;
+            } 
+            var sendTask = await client.GetUser(interessiertePerson.UserId).SendMessageAsync($"Auf dem Server {channelMitMeistenUsern.Guild.Name} im Channel {channelMitMeistenUsern.Name} geht was ab!");
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(5));
+                await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
+            });
         }
     }
 

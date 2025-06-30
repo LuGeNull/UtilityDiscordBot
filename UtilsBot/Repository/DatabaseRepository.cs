@@ -10,27 +10,31 @@ public class DatabaseRepository
 
     public void AddInterestedPeople(InterestedPeople interestedPeople)
     {
-        SaveData();
         _interestedPeopleInVoiceChannelChanges.Add(interestedPeople);
+        SaveData();
     }
 
-    public IEnumerable<InterestedPeople> GetInterestedPeople(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
+    public IEnumerable<InterestedPeople> HoleInteressiertePersoneDieNichtImVoiceChannelSind(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
     {
         LoadData();
         return _interestedPeopleInVoiceChannelChanges.Where(p =>
-            p.GuildId == guildId && !alleUserDieBereitsImVoiceChannelSind.Select(u => u.Id).Contains(p.UserId) && IstDerBenachrichtigungsZeitraumInDemDesBenutzers(p));
+            p.GuildId == guildId &&
+            IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
+                p)); //&& !alleUserDieBereitsImVoiceChannelSind.Select(u => u.Id).Contains(p.UserId) );
     }
 
-    private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPeople interestedPeople)
+    private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPeople interestedPerson)
     {
-        if (interestedPeople.NichtBenachrichtigenZeitBis == SqlDateTime.MinValue)
+        if (interestedPerson.NichtBenachrichtigenZeitBis == interestedPerson.ImmerBenachrichtigen)
         {
+            Console.WriteLine($"Debug: person {interestedPerson.UserId} will immer benachrichtigt werden");
             return true;
         }
 
-        if (interestedPeople.NichtBenachrichtigenZeitVon < DateTime.Now  && DateTime.Now <
-            interestedPeople.NichtBenachrichtigenZeitBis)
+        if (interestedPerson.NichtBenachrichtigenZeitVon < DateTime.Now.Hour  && DateTime.Now.Hour <
+            interestedPerson.NichtBenachrichtigenZeitBis)
         {
+            Console.WriteLine($"Debug: person {interestedPerson.UserId} will zwischen {interestedPerson.NichtBenachrichtigenZeitVon} und {interestedPerson.NichtBenachrichtigenZeitBis} Uhr benachrichtigt werden");
             return false;
         }
 
