@@ -42,7 +42,7 @@ public class DiscordService
         if (message.Author.Id == _client.CurrentUser.Id)
             return;
 
-        if (message.Content.StartsWith("!interestedd"))
+        if (message.Content.StartsWith("!interested"))
         {
             if (message.Author is SocketGuildUser guildUser)
             {
