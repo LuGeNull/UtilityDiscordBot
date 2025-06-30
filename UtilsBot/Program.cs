@@ -14,16 +14,13 @@ public class Program
 
     public static Task Main(string[] args)
     {
-        var config = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false)
-            .Build();
-        if (config["Discord:BotToken"] == null)
+        var token = Environment.GetEnvironmentVariable("DiscordToken");
+        if (token == null)
         {
-            Console.WriteLine("Discord Bot Token is required.");
+            throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
         }
         
-        return new Program(new DiscordService(new VoiceChannelChangeListenerService(new DatabaseRepository(), new Timer()), config["Discord:BotToken"]))
+        return new Program(new DiscordService(new VoiceChannelChangeListenerService(new DatabaseRepository(), new Timer()), token))
             .MainAsync();
     }
 

@@ -64,7 +64,7 @@ public class VoiceChannelChangeListenerService
     private void InformiereBenutzer(ulong guildId, List<SocketVoiceChannel> inFrageKommendeVoiceChannel,
         DiscordSocketClient client)
     {
-        var alleUserDieBereitsImVoiceChannelSind = inFrageKommendeVoiceChannel.SelectMany(c => c.Users).ToList();
+        var alleUserDieBereitsImVoiceChannelSind = inFrageKommendeVoiceChannel.SelectMany(c => c.ConnectedUsers).ToList();
         var interesiertePersonen = _database.GetInterestedPeople(guildId, alleUserDieBereitsImVoiceChannelSind).ToList();
         NachrichtenVerschicken(interesiertePersonen,inFrageKommendeVoiceChannel, client);
     }
@@ -89,6 +89,7 @@ public class VoiceChannelChangeListenerService
         var server = _guilds.FirstOrDefault(g => g.Id == guildId) ;
         if (server != null)
         {
+            return true;
             if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(MinutenAbstandVorBenachrichtigung))
             {
                 server.LastUserConnectedTime = DateTime.Now;
@@ -157,7 +158,7 @@ public class VoiceChannelChangeListenerService
     private static bool ChannelFilter(SocketVoiceChannel channel)
     {
         return !channel.Name.ToLower().Contains("afk") &&
-               channel.Users.Count > 0;
+               channel.ConnectedUsers.Count > 0;
     }
     
     private static bool ChannelFilterAfkAndVoiceChannelOnly(SocketGuildChannel channel)
