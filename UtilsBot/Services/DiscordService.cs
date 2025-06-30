@@ -30,7 +30,7 @@ public class DiscordService
     
     private Task ReadyAsync()
     {
-        Console.WriteLine($"We have logged in as {_client.CurrentUser}");
+        Console.WriteLine($"Onlien as: {_client.CurrentUser}");
         _voiceChannelChangeListener.StartPeriodicCheck(_client);
         
         
