@@ -1,6 +1,6 @@
 namespace UtilsBot;
 
-public class InterestedPeople
+public class InterestedPerson
 {
     public ulong UserId { get; }
     public ulong GuildId { get; }
@@ -9,8 +9,10 @@ public class InterestedPeople
     public int NichtBenachrichtigenZeitBis { get; set; }
     
     public int ImmerBenachrichtigen = -1;
+    
+    public DateTime LetztesMalBenachrichtigt { get; set; }
 
-    public InterestedPeople(ulong UserId, ulong guildId,  int nichtBenachrichtigenZeitVon = -1, int nichtBenachrichtigenZeitBis = -1)
+    public InterestedPerson(ulong UserId, ulong guildId,  int nichtBenachrichtigenZeitVon = -1, int nichtBenachrichtigenZeitBis = -1)
     {
         this.UserId = UserId;
         GuildId = guildId;
@@ -20,7 +22,7 @@ public class InterestedPeople
     
     public override bool Equals(object obj)
     {
-        return obj is InterestedPeople other &&
+        return obj is InterestedPerson other &&
                UserId == other.UserId &&
                GuildId == other.GuildId;
     }

@@ -23,3 +23,5 @@ project.fragment.lock.json
 
 # Umgebungsvariablen/Secrets
 .env
+
+*.DotSettings.user

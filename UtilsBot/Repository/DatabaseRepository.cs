@@ -6,24 +6,29 @@ namespace UtilsBot.Repository;
 
 public class DatabaseRepository
 {
-    private HashSet<InterestedPeople> _interestedPeopleInVoiceChannelChanges = new();
+    private HashSet<InterestedPerson> _interestedPeopleInVoiceChannelChanges = new();
 
-    public void AddInterestedPeople(InterestedPeople interestedPeople)
+    public void InterestedPersonGotMessaged(InterestedPerson person)
     {
-        _interestedPeopleInVoiceChannelChanges.Add(interestedPeople);
+        person.LetztesMalBenachrichtigt = DateTime.Now;
+        SaveData();
+    }
+    public void AddInterestedPeople(InterestedPerson interestedPerson)
+    {
+        _interestedPeopleInVoiceChannelChanges.Add(interestedPerson);
         SaveData();
     }
 
-    public IEnumerable<InterestedPeople> HoleInteressiertePersoneDieNichtImVoiceChannelSind(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
+    public IEnumerable<InterestedPerson> HoleInteressiertePersoneDieNichtImVoiceChannelSind(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
     {
         LoadData();
         return _interestedPeopleInVoiceChannelChanges.Where(p =>
             p.GuildId == guildId &&
             IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
-                p)); //&& !alleUserDieBereitsImVoiceChannelSind.Select(u => u.Id).Contains(p.UserId) );
+                p) && !alleUserDieBereitsImVoiceChannelSind.Select(u => u.Id).Contains(p.UserId) );
     }
 
-    private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPeople interestedPerson)
+    private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPerson interestedPerson)
     {
         if (interestedPerson.NichtBenachrichtigenZeitBis == interestedPerson.ImmerBenachrichtigen)
         {
@@ -45,7 +50,7 @@ public class DatabaseRepository
     {
         if (File.Exists("interestedPeople.json"))
         {
-            _interestedPeopleInVoiceChannelChanges = JsonSerializer.Deserialize<HashSet<InterestedPeople>>(
+            _interestedPeopleInVoiceChannelChanges = JsonSerializer.Deserialize<HashSet<InterestedPerson>>(
                 File.ReadAllText("interestedPeople.json")) ?? new();
         }
     }

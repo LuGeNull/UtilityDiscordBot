@@ -11,6 +11,7 @@ public class VoiceChannelChangeListenerService
     private System.Timers.Timer _checkTimer;
     public IEnumerable<Guild> _guilds;
     private const int MinutenAbstandVorBenachrichtigung = 30;
+    private const int NachrichtenLoeschenNachXMinuten = 5;
     public VoiceChannelChangeListenerService(DatabaseRepository database, Timer checkTimer)
     {
         _database = database;
@@ -20,7 +21,7 @@ public class VoiceChannelChangeListenerService
 
     public void AddUserToInterestedPeopleList(ulong userId, ulong guildId, int nichtbenachrichtigungsZeitraumVon, int nichtbenachrichtigungsZeitraumBis)
     {
-        _database.AddInterestedPeople(new InterestedPeople(userId,guildId, nichtbenachrichtigungsZeitraumVon,nichtbenachrichtigungsZeitraumBis));
+        _database.AddInterestedPeople(new InterestedPerson(userId,guildId, nichtbenachrichtigungsZeitraumVon,nichtbenachrichtigungsZeitraumBis));
     }
     
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
@@ -71,7 +72,7 @@ public class VoiceChannelChangeListenerService
         NachrichtenVerschicken(interesiertePersonen, inFrageKommendeVoiceChannel, client);
     }
 
-    private async Task NachrichtenVerschicken(List<InterestedPeople> interesiertePersonen,
+    private async Task NachrichtenVerschicken(List<InterestedPerson> interesiertePersonen,
         List<SocketVoiceChannel> inFrageKommendeVoiceChannel, DiscordSocketClient client)
     {
         foreach (var interessiertePerson in interesiertePersonen)
@@ -80,14 +81,25 @@ public class VoiceChannelChangeListenerService
             if (channelMitMeistenUsern == null)
             {
                 continue;
-            } 
-            var sendTask = await client.GetUser(interessiertePerson.UserId).SendMessageAsync($"Auf dem Server {channelMitMeistenUsern.Guild.Name} im Channel {channelMitMeistenUsern.Name} geht was ab!");
-            _ = Task.Run(async () =>
+            }
+
+            if (interessiertePerson.LetztesMalBenachrichtigt.AddMinutes(30) > DateTime.Now)
             {
-                await Task.Delay(TimeSpan.FromMinutes(5));
-                await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
-            });
+                continue;
+            }
+            var sendTask = await client.GetUser(interessiertePerson.UserId).SendMessageAsync($"Auf dem Server {channelMitMeistenUsern.Guild.Name} im Channel {channelMitMeistenUsern.Name} geht was ab!");
+            _database.InterestedPersonGotMessaged(interessiertePerson);
+            NachrichtenLöschenNachXMinuten(sendTask);
         }
+    }
+
+    private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
+    {
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromMinutes(NachrichtenLoeschenNachXMinuten));
+            await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
+        });
     }
 
     private SocketVoiceChannel HoleChannelMitMeistenUsern(IEnumerable<SocketVoiceChannel> inFrageKommendeVoiceChannel)
@@ -100,7 +112,6 @@ public class VoiceChannelChangeListenerService
         var server = _guilds.FirstOrDefault(g => g.Id == guildId) ;
         if (server != null)
         {
-            return true;
             if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(MinutenAbstandVorBenachrichtigung))
             {
                 server.LastUserConnectedTime = DateTime.Now;
@@ -178,8 +189,8 @@ public class VoiceChannelChangeListenerService
     }
 
     public void StartPeriodicCheck(DiscordSocketClient client)
-    {   //var a  = CheckServerChangesAsync(client);
-       _checkTimer = new System.Timers.Timer(5000); // Überprüft alle 5 Sekunden
+    { 
+        _checkTimer = new System.Timers.Timer(60000); // Überprüft alle 60 Sekunden
        _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
        _checkTimer.AutoReset = true;
        _checkTimer.Start();
