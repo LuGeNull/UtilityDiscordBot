@@ -10,8 +10,6 @@ public class VoiceChannelChangeListenerService
     public DatabaseRepository _database;
     private System.Timers.Timer _checkTimer;
     public IEnumerable<Guild> _guilds;
-    private const int MinutenAbstandVorBenachrichtigung = 30;
-    private const int NachrichtenLoeschenNachXMinuten = 5;
     public VoiceChannelChangeListenerService(DatabaseRepository database)
     {
         _database = database;
@@ -20,7 +18,7 @@ public class VoiceChannelChangeListenerService
     }
 
     public void AddUserToInterestedPeopleList(ulong userId, string userDisplayName, ulong guildId,
-        int nichtbenachrichtigungsZeitraumVon, int nichtbenachrichtigungsZeitraumBis)
+        long nichtbenachrichtigungsZeitraumVon, long nichtbenachrichtigungsZeitraumBis)
     {
         _database.AddInterestedPeople(new InterestedPerson(userId, userDisplayName, guildId, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis));
     }
@@ -85,7 +83,7 @@ public class VoiceChannelChangeListenerService
                 continue;
             }
 
-            if (interessiertePerson.LetztesMalBenachrichtigt.AddMinutes(30) > DateTime.Now)
+            if (interessiertePerson.LetztesMalBenachrichtigt.AddMinutes(ApplicationState.MindestestAnzahlAnMinutenBevorWiederBenachrichtigtWird) > DateTime.Now)
             {
                 continue;
             }
@@ -109,7 +107,7 @@ public class VoiceChannelChangeListenerService
     {
         _ = Task.Run(async () =>
         {
-            await Task.Delay(TimeSpan.FromMinutes(NachrichtenLoeschenNachXMinuten));
+            await Task.Delay(TimeSpan.FromMinutes(ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten));
             await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
         });
     }
@@ -129,7 +127,7 @@ public class VoiceChannelChangeListenerService
                 server.LastUserConnectedTime = DateTime.Now;
                 return true;
             }
-            if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(MinutenAbstandVorBenachrichtigung))
+            if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(ApplicationState.MindestestAnzahlAnMinutenBevorWiederBenachrichtigtWird))
             {
                 server.LastUserConnectedTime = DateTime.Now;
                 return true;

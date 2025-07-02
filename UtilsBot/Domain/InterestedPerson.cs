@@ -6,13 +6,13 @@ public class InterestedPerson
     public string DisplayName { get; }
     public ulong GuildId { get; }
     
-    public int NichtBenachrichtigenZeitVon { get; set; }
-    public int NichtBenachrichtigenZeitBis { get; set; }
+    public long NichtBenachrichtigenZeitVon { get; set; }
+    public long NichtBenachrichtigenZeitBis { get; set; }
     
     public DateTime LetztesMalBenachrichtigt { get; set; }
 
     public InterestedPerson(ulong UserId, string displayName, ulong guildId,
-        int nichtBenachrichtigenZeitVon = 0, int nichtBenachrichtigenZeitBis = 24)
+        long nichtBenachrichtigenZeitVon = 0, long nichtBenachrichtigenZeitBis = 24)
     {
         this.UserId = UserId;
         DisplayName = displayName;

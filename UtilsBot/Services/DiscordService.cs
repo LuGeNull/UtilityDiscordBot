@@ -31,34 +31,68 @@ public class DiscordService
     private Task ReadyAsync()
     {
         Console.WriteLine($"Online as: {_client.CurrentUser}");
+        _client.SlashCommandExecuted += SlashCommandHandlerAsync;
+
+        RegistriereCommands(_client);
         _voiceChannelChangeListener.StartPeriodicCheck(_client);
         
         
         return Task.CompletedTask;
     }
-    
-    private async Task MessageReceivedAsync(SocketMessage message)
-    {
-        if (message.Author.Id == _client.CurrentUser.Id)
-            return;
 
-        if (message.Content.StartsWith("!interested"))
+    private async void RegistriereCommands(DiscordSocketClient client)
+    {
+
+        foreach (var guildId in client.Guilds.Select(g => g.Id))
         {
-            
-            var NichtBenachrichtigungszeitraum = message.Content.Split(' ');
-            var nichtbenachrichtigungsZeitraumVon = 0;
-            var nichtbenachrichtigungsZeitraumBis = 0;
-            var IstEingabeErfolgreichGewesen = UeberpruefeEingabe(message, NichtBenachrichtigungszeitraum, out nichtbenachrichtigungsZeitraumVon, out nichtbenachrichtigungsZeitraumBis);
-            
-            
-            if (message.Author is SocketGuildUser guildUser && IstEingabeErfolgreichGewesen)
-            {
-                _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id, guildUser.DisplayName,guildUser.Guild.Id, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis);
-                var resultMessage = await message.Channel.SendMessageAsync("I'll notify you!");
-            }
+            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+                .WithName("interested")
+                .WithDescription("Bekomme Benachrichtigungen wenn Personen erstmalig nach 30 Min einen Discord Channel beitreten")
+                .AddOption("von", ApplicationCommandOptionType.Integer, "Nicht Benachrichtigen Von (z.B 7 für ab 7 Uhr morgens)", isRequired: true)
+                .AddOption("bis", ApplicationCommandOptionType.Integer, "Nicht Benachrichtigen Bis (z.B 16 für bis 16 Uhr Nachmittags)", isRequired: true)
+                .Build(), guildId);
         }
     }
 
+    private async Task MessageReceivedAsync(SocketMessage message)
+    {
+      //if (message.Author.Id == _client.CurrentUser.Id)
+      //    return;
+
+      //if (message.Content.StartsWith("!interested"))
+      //{
+      //    
+      //    var NichtBenachrichtigungszeitraum = message.Content.Split(' ');
+      //    var nichtbenachrichtigungsZeitraumVon = 0;
+      //    var nichtbenachrichtigungsZeitraumBis = 0;
+      //    var IstEingabeErfolgreichGewesen = UeberpruefeEingabe(message, NichtBenachrichtigungszeitraum, out nichtbenachrichtigungsZeitraumVon, out nichtbenachrichtigungsZeitraumBis);
+      //    
+      //    
+      //    if (message.Author is SocketGuildUser guildUser && IstEingabeErfolgreichGewesen)
+      //    {
+      //        _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id, guildUser.DisplayName,guildUser.Guild.Id, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis);
+      //        var resultMessage = await message.Channel.SendMessageAsync("I'll notify you!");
+      //    }
+      //}
+    }
+
+    
+    private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
+    {
+        if (command.CommandName == "interested")
+        {
+            var  von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
+            var bis = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "bis")?.Value ?? 0L;
+
+            if (command.User is SocketGuildUser guildUser)
+            {
+                
+                _voiceChannelChangeListener.AddUserToInterestedPeopleList(
+                    guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
+                await command.RespondAsync("I'll notify you!");
+            }
+        }
+    }
     private static bool UeberpruefeEingabe(SocketMessage message, string[] NichtBenachrichtigungszeitraum,
         out int nichtbenachrichtigungsZeitraumVon, out int nichtbenachrichtigungsZeitraumBis)
     {
