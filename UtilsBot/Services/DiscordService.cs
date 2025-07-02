@@ -41,14 +41,21 @@ public class DiscordService
 
     private async void RegistriereCommands(DiscordSocketClient client)
     {
-
         foreach (var guildId in client.Guilds.Select(g => g.Id))
         {
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
                 .WithName("interested")
-                .WithDescription("Bekomme Benachrichtigungen wenn Personen erstmalig nach 30 Min einen Discord Channel beitreten")
-                .AddOption("von", ApplicationCommandOptionType.Integer, "Nicht Benachrichtigen Von (z.B 7 für ab 7 Uhr morgens)", isRequired: true)
-                .AddOption("bis", ApplicationCommandOptionType.Integer, "Nicht Benachrichtigen Bis (z.B 16 für bis 16 Uhr Nachmittags)", isRequired: true)
+                .WithDescription("Bekomme Benachrichtigungen wenn Personen einen Discord Channel beitreten")
+                .AddOption("von", ApplicationCommandOptionType.Integer, "Von (z.B Wert:15 für ab 15 Uhr Nachmittags)", isRequired: true)
+                .AddOption("bis", ApplicationCommandOptionType.Integer, "Bis (z.B Wert:23 für bis 23 Uhr Abends)", isRequired: true)
+                .Build(), guildId);
+        }
+        
+        foreach (var guildId in client.Guilds.Select(g => g.Id))
+        {
+            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+                .WithName("NotInterestedAnymore")
+                .WithDescription("Entferne mich aus der Liste")
                 .Build(), guildId);
         }
     }
@@ -66,6 +73,20 @@ public class DiscordService
                 _voiceChannelChangeListener.AddUserToInterestedPeopleList(
                     guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
                 await command.RespondAsync("I'll notify you!");
+            }
+        }
+        
+        if (command.CommandName == "NotInterestedAnymore")
+        {
+           if (command.User is SocketGuildUser guildUser)
+            {
+                var erfolgreich = _voiceChannelChangeListener.RemoveUserFromInterestedPeopleList(
+                    guildUser.Id);
+
+                if (erfolgreich)
+                {
+                    await command.RespondAsync("I removed you!");
+                }
             }
         }
     }

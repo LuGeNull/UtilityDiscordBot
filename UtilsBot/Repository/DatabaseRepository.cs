@@ -15,6 +15,11 @@ public class DatabaseRepository
     }
     public void AddInterestedPeople(InterestedPerson interestedPerson)
     {
+        if (_interestedPeopleInVoiceChannelChanges.Select(i => i.UserId).Contains(interestedPerson.UserId))
+        {
+            _interestedPeopleInVoiceChannelChanges.RemoveWhere(e => e.UserId == interestedPerson.UserId);
+            
+        }
         _interestedPeopleInVoiceChannelChanges.Add(interestedPerson);
         SaveData();
     }
@@ -60,6 +65,17 @@ public class DatabaseRepository
     {
         File.WriteAllText("interestedPeople.json", JsonSerializer.Serialize(_interestedPeopleInVoiceChannelChanges));
     }
-    
-    
+
+
+    public bool RemoveUserFromList(ulong userId)
+    {
+        if (_interestedPeopleInVoiceChannelChanges.Select(i => i.UserId).Contains(userId))
+        {
+            _interestedPeopleInVoiceChannelChanges.RemoveWhere(e => e.UserId == userId);
+            SaveData();
+            return true;
+        }
+
+        return false;
+    }
 }

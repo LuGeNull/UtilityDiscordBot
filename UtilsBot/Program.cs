@@ -17,8 +17,7 @@ public class Program
     public static Task Main(string[] args)
     {
         ApplicationState.TestMode = true;
-        ApplicationState.MindestestAnzahlAnMinutenBevorWiederBenachrichtigtWird = 30;
-        ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 5;
+        ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
         
         var token = Environment.GetEnvironmentVariable("DiscordToken");
         if (token == null)

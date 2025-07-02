@@ -82,11 +82,7 @@ public class VoiceChannelChangeListenerService
             {
                 continue;
             }
-
-            if (interessiertePerson.LetztesMalBenachrichtigt.AddMinutes(ApplicationState.MindestestAnzahlAnMinutenBevorWiederBenachrichtigtWird) > DateTime.Now)
-            {
-                continue;
-            }
+            
             var sendTask = await client.GetUser(interessiertePerson.UserId).SendMessageAsync($"Auf dem Server {channelMitMeistenUsern.Guild.Name} im Channel {channelMitMeistenUsern.Name} geht was ab!");
             _database.InterestedPersonGotMessaged(interessiertePerson);
             NachrichtenLöschenNachXMinuten(sendTask);
@@ -123,11 +119,6 @@ public class VoiceChannelChangeListenerService
         if (server != null)
         {
             if (ApplicationState.TestMode)
-            {
-                server.LastUserConnectedTime = DateTime.Now;
-                return true;
-            }
-            if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(ApplicationState.MindestestAnzahlAnMinutenBevorWiederBenachrichtigtWird))
             {
                 server.LastUserConnectedTime = DateTime.Now;
                 return true;
@@ -218,5 +209,10 @@ public class VoiceChannelChangeListenerService
             _checkTimer.Start();
         }
      
+    }
+
+    public bool RemoveUserFromInterestedPeopleList(ulong userId)
+    {
+        return _database.RemoveUserFromList(userId);
     }
 }
