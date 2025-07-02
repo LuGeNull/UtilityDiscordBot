@@ -12,16 +12,17 @@ public class VoiceChannelChangeListenerService
     public IEnumerable<Guild> _guilds;
     private const int MinutenAbstandVorBenachrichtigung = 30;
     private const int NachrichtenLoeschenNachXMinuten = 5;
-    public VoiceChannelChangeListenerService(DatabaseRepository database, Timer checkTimer)
+    public VoiceChannelChangeListenerService(DatabaseRepository database)
     {
         _database = database;
-        _checkTimer = checkTimer;
+        _checkTimer = new Timer();
         _guilds = new List<Guild>();
     }
 
-    public void AddUserToInterestedPeopleList(ulong userId, ulong guildId, int nichtbenachrichtigungsZeitraumVon, int nichtbenachrichtigungsZeitraumBis)
+    public void AddUserToInterestedPeopleList(ulong userId, string userDisplayName, ulong guildId,
+        int nichtbenachrichtigungsZeitraumVon, int nichtbenachrichtigungsZeitraumBis)
     {
-        _database.AddInterestedPeople(new InterestedPerson(userId,guildId, nichtbenachrichtigungsZeitraumVon,nichtbenachrichtigungsZeitraumBis));
+        _database.AddInterestedPeople(new InterestedPerson(userId, userDisplayName, guildId, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis));
     }
     
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
@@ -65,6 +66,7 @@ public class VoiceChannelChangeListenerService
     private void InformiereBenutzer(ulong guildId, List<SocketVoiceChannel> inFrageKommendeVoiceChannel,
         DiscordSocketClient client)
     {
+        
         var alleUserDieBereitsImVoiceChannelSind = inFrageKommendeVoiceChannel.SelectMany(c => c.ConnectedUsers).ToList();
         var interesiertePersonen =
             _database.HoleInteressiertePersoneDieNichtImVoiceChannelSind(guildId, alleUserDieBereitsImVoiceChannelSind).ToList();
@@ -77,7 +79,7 @@ public class VoiceChannelChangeListenerService
     {
         foreach (var interessiertePerson in interesiertePersonen)
         {
-            var channelMitMeistenUsern = inFrageKommendeVoiceChannel.Where(c => c.Users.Select(u => u.Id).Contains(interessiertePerson.UserId)).OrderByDescending(c => c.ConnectedUsers).FirstOrDefault();
+            var channelMitMeistenUsern = inFrageKommendeVoiceChannel.Where(c => CheckIfUserCanSeeTheChannel(interessiertePerson, c)).OrderByDescending(c => c.ConnectedUsers).FirstOrDefault();
             if (channelMitMeistenUsern == null)
             {
                 continue;
@@ -91,6 +93,16 @@ public class VoiceChannelChangeListenerService
             _database.InterestedPersonGotMessaged(interessiertePerson);
             NachrichtenLöschenNachXMinuten(sendTask);
         }
+    }
+
+    private bool CheckIfUserCanSeeTheChannel(InterestedPerson interessiertePerson, SocketVoiceChannel channel)
+    {
+        var a = channel.GetUser(interessiertePerson.UserId).Roles.Select(r => r.Id);
+        if (channel.GetUser(interessiertePerson.UserId).Roles.Select(r => r.Id).ToList().Any( rid => channel.PermissionOverwrites.Any(p => p.TargetId == rid)))
+        {
+            return true;
+        }
+       return false;
     }
 
     private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
@@ -112,6 +124,11 @@ public class VoiceChannelChangeListenerService
         var server = _guilds.FirstOrDefault(g => g.Id == guildId) ;
         if (server != null)
         {
+            if (ApplicationState.TestMode)
+            {
+                server.LastUserConnectedTime = DateTime.Now;
+                return true;
+            }
             if ( server.LastUserConnectedTime < DateTime.Now - TimeSpan.FromMinutes(MinutenAbstandVorBenachrichtigung))
             {
                 server.LastUserConnectedTime = DateTime.Now;
@@ -189,10 +206,19 @@ public class VoiceChannelChangeListenerService
     }
 
     public void StartPeriodicCheck(DiscordSocketClient client)
-    { 
-        _checkTimer = new System.Timers.Timer(60000); // Überprüft alle 60 Sekunden
-       _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
-       _checkTimer.AutoReset = true;
-       _checkTimer.Start();
+    {
+        if (ApplicationState.TestMode)
+        {
+            CheckServerChangesAsync(client);
+            CheckServerChangesAsync(client);
+        }
+        else
+        {
+            _checkTimer = new System.Timers.Timer(60000); // Überprüft alle 60 Sekunden
+            _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
+            _checkTimer.AutoReset = true;
+            _checkTimer.Start();
+        }
+     
     }
 }

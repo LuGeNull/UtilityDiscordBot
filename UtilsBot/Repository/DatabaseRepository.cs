@@ -22,6 +22,14 @@ public class DatabaseRepository
     public IEnumerable<InterestedPerson> HoleInteressiertePersoneDieNichtImVoiceChannelSind(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
     {
         LoadData();
+        if (ApplicationState.TestMode)
+        {
+            return _interestedPeopleInVoiceChannelChanges.Where(p =>
+                p.GuildId == guildId &&
+                IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
+                    p));
+        }
+        
         return _interestedPeopleInVoiceChannelChanges.Where(p =>
             p.GuildId == guildId &&
             IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
@@ -30,16 +38,9 @@ public class DatabaseRepository
 
     private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPerson interestedPerson)
     {
-        if (interestedPerson.NichtBenachrichtigenZeitBis == interestedPerson.ImmerBenachrichtigen)
-        {
-            Console.WriteLine($"Debug: person {interestedPerson.UserId} will immer benachrichtigt werden");
-            return true;
-        }
-
         if (interestedPerson.NichtBenachrichtigenZeitVon < DateTime.Now.Hour  && DateTime.Now.Hour <
             interestedPerson.NichtBenachrichtigenZeitBis)
         {
-            Console.WriteLine($"Debug: person {interestedPerson.UserId} will zwischen {interestedPerson.NichtBenachrichtigenZeitVon} und {interestedPerson.NichtBenachrichtigenZeitBis} Uhr benachrichtigt werden");
             return false;
         }
 

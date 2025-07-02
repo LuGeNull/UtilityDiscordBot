@@ -53,7 +53,7 @@ public class DiscordService
             
             if (message.Author is SocketGuildUser guildUser && IstEingabeErfolgreichGewesen)
             {
-                _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id,guildUser.Guild.Id, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis);
+                _voiceChannelChangeListener.AddUserToInterestedPeopleList(guildUser.Id, guildUser.DisplayName,guildUser.Guild.Id, nichtbenachrichtigungsZeitraumVon, nichtbenachrichtigungsZeitraumBis);
                 var resultMessage = await message.Channel.SendMessageAsync("I'll notify you!");
             }
         }
@@ -89,12 +89,12 @@ public class DiscordService
         }
         else
         {
-            nichtbenachrichtigungsZeitraumVon = -1;
-            nichtbenachrichtigungsZeitraumBis = -1;
+            nichtbenachrichtigungsZeitraumVon = 0;
+            nichtbenachrichtigungsZeitraumBis = 24;
             return true;
         }
-        nichtbenachrichtigungsZeitraumVon = -1;
-        nichtbenachrichtigungsZeitraumBis = -1;
+        nichtbenachrichtigungsZeitraumVon = 0;
+        nichtbenachrichtigungsZeitraumBis = 24;
         return false;
     }
 

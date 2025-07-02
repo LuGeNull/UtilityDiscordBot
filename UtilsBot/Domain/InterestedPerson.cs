@@ -3,18 +3,19 @@ namespace UtilsBot;
 public class InterestedPerson
 {
     public ulong UserId { get; }
+    public string DisplayName { get; }
     public ulong GuildId { get; }
     
     public int NichtBenachrichtigenZeitVon { get; set; }
     public int NichtBenachrichtigenZeitBis { get; set; }
     
-    public int ImmerBenachrichtigen = -1;
-    
     public DateTime LetztesMalBenachrichtigt { get; set; }
 
-    public InterestedPerson(ulong UserId, ulong guildId,  int nichtBenachrichtigenZeitVon = -1, int nichtBenachrichtigenZeitBis = -1)
+    public InterestedPerson(ulong UserId, string displayName, ulong guildId,
+        int nichtBenachrichtigenZeitVon = 0, int nichtBenachrichtigenZeitBis = 24)
     {
         this.UserId = UserId;
+        DisplayName = displayName;
         GuildId = guildId;
         NichtBenachrichtigenZeitVon = nichtBenachrichtigenZeitVon;
         NichtBenachrichtigenZeitBis = nichtBenachrichtigenZeitBis;
