@@ -6,76 +6,89 @@ namespace UtilsBot.Repository;
 
 public class DatabaseRepository
 {
-    private HashSet<InterestedPerson> _interestedPeopleInVoiceChannelChanges = new();
+    public List<AllgemeinePerson?> _personen = new();
 
-    public void InterestedPersonGotMessaged(InterestedPerson person)
+    public void DebugInfo()
     {
-        person.LetztesMalBenachrichtigt = DateTime.Now;
-        SaveData();
-    }
-    public void AddInterestedPeople(InterestedPerson interestedPerson)
-    {
-        if (_interestedPeopleInVoiceChannelChanges.Select(i => i.UserId).Contains(interestedPerson.UserId))
+        Console.WriteLine("\n");
+        Console.WriteLine("\n");
+        Console.WriteLine("\n");
+        Console.WriteLine("\n");
+        Console.WriteLine("\n");
+        foreach (var person in _personen)
         {
-            _interestedPeopleInVoiceChannelChanges.RemoveWhere(e => e.UserId == interestedPerson.UserId);
-            
+            if (person != null)
+            {
+                Console.WriteLine($"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
+            }
         }
-        _interestedPeopleInVoiceChannelChanges.Add(interestedPerson);
-        SaveData();
+    }
+    public void AddUserToInterestedList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von, long bis)
+    {
+        var willBenachrichtigtWerden = true;
+        if (AlleIdsPersonen().Contains(guildUserId))
+        {
+            var person = HoleAllgemeinePersonMitId(guildUserId);
+            person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
+            person.BenachrichtigenZeitVon = von;
+            person.BenachrichtigenZeitBis = bis;
+
+        }
+        else
+        {
+            var person = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
+            person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
+            person.BenachrichtigenZeitVon = von;
+            person.BenachrichtigenZeitBis = bis;
+            _personen.Add(person);
+        }
     }
 
-    public IEnumerable<InterestedPerson> HoleInteressiertePersoneDieNichtImVoiceChannelSind(ulong guildId, List<SocketGuildUser> alleUserDieBereitsImVoiceChannelSind)
+    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson, string displayNameDerBenachrichtigendenPerson)
     {
-        LoadData();
-        if (ApplicationState.TestMode)
-        {
-            return _interestedPeopleInVoiceChannelChanges.Where(p =>
-                p.GuildId == guildId &&
-                IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
-                    p));
-        }
-        
-        return _interestedPeopleInVoiceChannelChanges.Where(p =>
-            p.GuildId == guildId &&
-            IstDerBenachrichtigungsZeitraumInDemDesBenutzers(
-                p) && !alleUserDieBereitsImVoiceChannelSind.Select(u => u.Id).Contains(p.UserId) );
+        return _personen.Where(p => p.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,displayNameDerBenachrichtigendenPerson)).ToList();
+    }
+    public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
+    {
+        var user = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
+        user.WillBenachrichtigungenBekommen = false;
+        _personen.Add(user);
     }
 
-    private bool IstDerBenachrichtigungsZeitraumInDemDesBenutzers(InterestedPerson interestedPerson)
-    {
-        if (interestedPerson.NichtBenachrichtigenZeitVon < DateTime.Now.Hour  && DateTime.Now.Hour <
-            interestedPerson.NichtBenachrichtigenZeitBis)
-        {
-            return false;
-        }
 
-        return true;
+    public List<ulong> AlleIdsPersonen()
+    {
+        return this._personen.Select(p => p.UserId).ToList();
+    }
+
+    public AllgemeinePerson? HoleAllgemeinePersonMitId(ulong userId)
+    {
+        return this._personen.FirstOrDefault(p => p.UserId == userId);
     }
     
-    private void LoadData()
+    public List<AllgemeinePerson?> HoleAllgemeinePersonenMitGuildId(ulong guildId)
     {
-        if (File.Exists("interestedPeople.json"))
-        {
-            _interestedPeopleInVoiceChannelChanges = JsonSerializer.Deserialize<HashSet<InterestedPerson>>(
-                File.ReadAllText("interestedPeople.json")) ?? new();
-        }
+        return this._personen.Where(p => p.GuildId == guildId).ToList();
+    }
+    
+    public List<ulong> HoleAllgemeinePersonenIdsMitGuildId(ulong guildId)
+    {
+        return this._personen.Where(p => p.GuildId == guildId).Select(a => a.UserId).ToList();
     }
 
+   
+    
+    public void LoadData()
+    {
+        if (File.Exists("People.json"))
+        {
+            _personen = JsonSerializer.Deserialize<List<AllgemeinePerson>>(
+                File.ReadAllText("People.json")) ?? new();
+        }
+    }
+   
     public void SaveData()
     {
-        File.WriteAllText("interestedPeople.json", JsonSerializer.Serialize(_interestedPeopleInVoiceChannelChanges));
-    }
-
-
-    public bool RemoveUserFromList(ulong userId)
-    {
-        if (_interestedPeopleInVoiceChannelChanges.Select(i => i.UserId).Contains(userId))
-        {
-            _interestedPeopleInVoiceChannelChanges.RemoveWhere(e => e.UserId == userId);
-            SaveData();
-            return true;
-        }
-
-        return false;
+        File.WriteAllText("People.json", JsonSerializer.Serialize(_personen));
     }
 }

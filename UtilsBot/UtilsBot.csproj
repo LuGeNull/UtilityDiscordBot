@@ -10,10 +10,15 @@
     <ItemGroup>
       <PackageReference Include="Discord.Net" Version="3.17.4" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
+      <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
     </ItemGroup>
 
     <ItemGroup>
       <None Remove="appsettings.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="ServiceTest\" />
     </ItemGroup>
 
 </Project>

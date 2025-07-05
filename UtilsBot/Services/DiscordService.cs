@@ -50,14 +50,6 @@ public class DiscordService
                 .AddOption("bis", ApplicationCommandOptionType.Integer, "Bis (z.B Wert:23 für bis 23 Uhr Abends)", isRequired: true)
                 .Build(), guildId);
         }
-        
-        foreach (var guildId in client.Guilds.Select(g => g.Id))
-        {
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("NotInterestedAnymore")
-                .WithDescription("Entferne mich aus der Liste")
-                .Build(), guildId);
-        }
     }
 
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
@@ -73,20 +65,6 @@ public class DiscordService
                 _voiceChannelChangeListener.AddUserToInterestedPeopleList(
                     guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
                 await command.RespondAsync("I'll notify you!");
-            }
-        }
-        
-        if (command.CommandName == "NotInterestedAnymore")
-        {
-           if (command.User is SocketGuildUser guildUser)
-            {
-                var erfolgreich = _voiceChannelChangeListener.RemoveUserFromInterestedPeopleList(
-                    guildUser.Id);
-
-                if (erfolgreich)
-                {
-                    await command.RespondAsync("I removed you!");
-                }
             }
         }
     }

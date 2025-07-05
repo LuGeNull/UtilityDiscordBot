@@ -18,6 +18,9 @@ public class Program
     {
         ApplicationState.TestMode = true;
         ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
+        ApplicationState.TickProXSekunden = 60000;
+        ApplicationState.BaseXp = 4;
+        ApplicationState.UserXMinutenAusDemChannel = 1;
         
         var token = Environment.GetEnvironmentVariable("DiscordToken");
         if (token == null)
