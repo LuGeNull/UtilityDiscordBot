@@ -16,11 +16,22 @@ public class Program
 
     public static Task Main(string[] args)
     {
-        ApplicationState.TestMode = true;
-        ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
-        ApplicationState.TickProXSekunden = 60000;
-        ApplicationState.BaseXp = 4;
-        ApplicationState.UserXMinutenAusDemChannel = 1;
+        ApplicationState.TestMode = false;
+        if (ApplicationState.TestMode)
+        {
+            ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 1;
+            ApplicationState.TickProXSekunden = 60000;
+            ApplicationState.BaseXp = 4;
+            ApplicationState.UserXMinutenAusDemChannel = 1;
+        }
+        else
+        {
+            ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
+            ApplicationState.TickProXSekunden = 60000;
+            ApplicationState.BaseXp = 4;
+            ApplicationState.UserXMinutenAusDemChannel = 30;
+        }
+       
         
         var token = Environment.GetEnvironmentVariable("DiscordToken");
         if (token == null)

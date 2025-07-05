@@ -49,6 +49,11 @@ public class DiscordService
                 .AddOption("von", ApplicationCommandOptionType.Integer, "Von (z.B Wert:15 für ab 15 Uhr Nachmittags)", isRequired: true)
                 .AddOption("bis", ApplicationCommandOptionType.Integer, "Bis (z.B Wert:23 für bis 23 Uhr Abends)", isRequired: true)
                 .Build(), guildId);
+            
+            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+                .WithName("xp")
+                .WithDescription("Auskunft über deine derzeitige XP")
+                .Build(), guildId);
         }
     }
 
@@ -56,15 +61,23 @@ public class DiscordService
     {
         if (command.CommandName == "interested")
         {
-            var  von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
+            var von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
             var bis = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "bis")?.Value ?? 0L;
 
             if (command.User is SocketGuildUser guildUser)
             {
-                
                 _voiceChannelChangeListener.AddUserToInterestedPeopleList(
                     guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
                 await command.RespondAsync("I'll notify you!");
+            }
+        }
+        
+        if (command.CommandName == "xp")
+        {
+            if (command.User is SocketGuildUser guildUser)
+            {
+                var xp = _voiceChannelChangeListener._database.HoleUserXpMitId(guildUser.Id);
+                await command.RespondAsync($"Du hast zurzeit {xp} Xp");
             }
         }
     }

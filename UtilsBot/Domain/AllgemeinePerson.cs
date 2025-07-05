@@ -11,7 +11,7 @@ public class AllgemeinePerson
     public long Xp { get; set; }
     
     public DateTime ZuletztImChannel { get; set; }
-    private List<BenachrichtigungEingegangen> BenachrichtigungEingegangen { get; set; }
+    public List<BenachrichtigungEingegangen> BenachrichtigungEingegangen { get; set; }
 
   
     public long BenachrichtigenZeitVon { get; set; }

@@ -44,9 +44,9 @@ public class DatabaseRepository
         }
     }
 
-    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson, string displayNameDerBenachrichtigendenPerson)
+    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson, string displayNameDerBenachrichtigendenPerson, List<ulong> userImChannel)
     {
-        return _personen.Where(p => p.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,displayNameDerBenachrichtigendenPerson)).ToList();
+        return _personen.Where(p => !userImChannel.Contains(p.UserId) && p.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,displayNameDerBenachrichtigendenPerson) ).ToList();
     }
     public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
@@ -90,5 +90,10 @@ public class DatabaseRepository
     public void SaveData()
     {
         File.WriteAllText("People.json", JsonSerializer.Serialize(_personen));
+    }
+
+    public long HoleUserXpMitId(ulong guildUserId)
+    {
+        return _personen.First(p => p.UserId == guildUserId).Xp;
     }
 }
