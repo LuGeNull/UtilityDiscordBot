@@ -99,6 +99,6 @@ public class DatabaseRepository
 
     public long HoleUserXpMitId(ulong guildUserId)
     {
-        return _personen.First(p => p.UserId == guildUserId).Xp;
+        return _personen?.FirstOrDefault(p => p.UserId == guildUserId).Xp ?? 0 ;
     }
 }
