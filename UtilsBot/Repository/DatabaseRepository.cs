@@ -80,16 +80,21 @@ public class DatabaseRepository
     
     public void LoadData()
     {
-        if (File.Exists("People.json"))
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "data", "People.json")))
         {
             _personen = JsonSerializer.Deserialize<List<AllgemeinePerson>>(
-                File.ReadAllText("People.json")) ?? new();
+                File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "People.json"))) ?? new();
         }
     }
    
     public void SaveData()
     {
-        File.WriteAllText("People.json", JsonSerializer.Serialize(_personen));
+        if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "data")))
+        {
+            Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        }
+        
+        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "data", "People.json"), JsonSerializer.Serialize(_personen));
     }
 
     public long HoleUserXpMitId(ulong guildUserId)
