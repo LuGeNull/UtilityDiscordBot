@@ -68,7 +68,7 @@ public class DiscordService
             {
                 _voiceChannelChangeListener.AddUserToInterestedPeopleList(
                     guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
-                await command.RespondAsync("I'll notify you!");
+                await command.RespondAsync("I'll notify you!",  ephemeral: true);
             }
         }
         
@@ -77,7 +77,7 @@ public class DiscordService
             if (command.User is SocketGuildUser guildUser)
             {
                 var xp = _voiceChannelChangeListener._database.HoleUserXpMitId(guildUser.Id);
-                await command.RespondAsync($"Du hast zurzeit {xp} Xp");
+                await command.RespondAsync($"Du hast zurzeit {xp} Xp", ephemeral: true);
             }
         }
     }
