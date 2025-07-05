@@ -48,7 +48,7 @@ public class VoiceChannelChangeListenerService
             }
 
             lokalePerson.ZuletztImChannel = DateTime.Now;
-            UpdateExp(lokalePerson);
+            UpdateExp(lokalePerson, user);
         }
     }
 
@@ -81,9 +81,32 @@ public class VoiceChannelChangeListenerService
         return false;
     }
 
-    private void UpdateExp(AllgemeinePerson lokalePerson)
+    private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
     {
-        lokalePerson.Xp += ApplicationState.BaseXp;
+        if (user.IsStreaming && !user.IsSelfMuted && !user.IsSelfDeafened)
+        {
+            lokalePerson.Xp += ApplicationState.BaseXp * ApplicationState.StreamMultiplier;
+            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp * ApplicationState.StreamMultiplier} XP bekommen");
+        }
+        else
+        {
+            if (user.IsSelfMuted && user.IsSelfDeafened)
+            {
+                lokalePerson.Xp += ApplicationState.FullMuteBaseXp;
+                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
+            }
+            else if (user.IsSelfMuted && !user.IsSelfDeafened)
+            {
+                lokalePerson.Xp += ApplicationState.OnlyMuteBaseXp;
+                Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
+            }
+            else
+            {
+                lokalePerson.Xp += ApplicationState.BaseXp;
+                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
+            }
+        }
+       
     }
 
     private void NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
@@ -100,7 +123,7 @@ public class VoiceChannelChangeListenerService
 
     public void StartPeriodicCheck(DiscordSocketClient client)
     {
-        if (ApplicationState.TestMode) CheckServerChangesAsync(client);
+        CheckServerChangesAsync(client);
         _checkTimer = new Timer(ApplicationState.TickProXSekunden);
         _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
         _checkTimer.AutoReset = true;

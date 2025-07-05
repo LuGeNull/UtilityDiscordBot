@@ -92,8 +92,7 @@ public class DatabaseRepository
         if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "data")))
         {
             Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
-        }
-        
+        } 
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "data", "People.json"), JsonSerializer.Serialize(_personen));
     }
 

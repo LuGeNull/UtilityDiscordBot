@@ -23,6 +23,9 @@ public class Program
             ApplicationState.TickProXSekunden = 60000;
             ApplicationState.BaseXp = 4;
             ApplicationState.UserXMinutenAusDemChannel = 1;
+            ApplicationState.StreamMultiplier = 2;
+            ApplicationState.FullMuteBaseXp = 2;
+            ApplicationState.OnlyMuteBaseXp = 3;
         }
         else
         {
@@ -30,6 +33,9 @@ public class Program
             ApplicationState.TickProXSekunden = 60000;
             ApplicationState.BaseXp = 4;
             ApplicationState.UserXMinutenAusDemChannel = 30;
+            ApplicationState.StreamMultiplier = 2;
+            ApplicationState.FullMuteBaseXp = 2;
+            ApplicationState.OnlyMuteBaseXp = 3;
         }
        
         
