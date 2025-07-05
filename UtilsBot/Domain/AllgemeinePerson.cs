@@ -36,6 +36,11 @@ public class AllgemeinePerson
             var datumJetzt = DateTime.Now;
             var untereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0);
             var obereSchranke = DateTime.Now;
+            if (BenachrichtigenZeitBis < BenachrichtigenZeitVon)
+            {
+                untereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0).AddDays(-1);
+                obereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitBis.ToString()), 0, 0);
+            }
             if (BenachrichtigenZeitBis == 24 || BenachrichtigenZeitBis == 0)
             {
                 obereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,23, 59, 59);
