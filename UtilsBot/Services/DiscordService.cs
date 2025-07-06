@@ -99,7 +99,9 @@ public class DiscordService
         {
             if (command.User is SocketGuildUser guildUser)
             {
+                Console.WriteLine($"{DateTime.UtcNow} vor");
                 await command.DeferAsync(ephemeral: true); 
+                Console.WriteLine($"[{DateTime.UtcNow}] DeferAsync ausgeführt");
                 var xp = _voiceChannelChangeListener._database.HoleUserXpMitId(guildUser.Id);
                 var level = _levelService.BerechneLevel(xp, 1000);
                 var nextLevel = level + 1;
