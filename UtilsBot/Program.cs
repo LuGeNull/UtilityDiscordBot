@@ -26,6 +26,7 @@ public class Program
             ApplicationState.StreamMultiplier = 2;
             ApplicationState.FullMuteBaseXp = 2;
             ApplicationState.OnlyMuteBaseXp = 3;
+            ApplicationState.NachrichtenVerschicken = false;
         }
         else
         {
@@ -36,6 +37,7 @@ public class Program
             ApplicationState.StreamMultiplier = 2;
             ApplicationState.FullMuteBaseXp = 2;
             ApplicationState.OnlyMuteBaseXp = 3;
+            ApplicationState.NachrichtenVerschicken = true;
         }
        
         

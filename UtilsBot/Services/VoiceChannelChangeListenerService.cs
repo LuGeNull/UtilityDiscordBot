@@ -58,9 +58,17 @@ public class VoiceChannelChangeListenerService
         foreach (var zuBenachrichtigendePerson in zuBenachrichtigendePersonen)
         {
             var user = await client.GetUserAsync(zuBenachrichtigendePerson.UserId);
-            var sendTask =
-                await user.SendMessageAsync($"Auf dem Server {guildName} ist {userDisplayName} beigetreten!");
-            NachrichtenLöschenNachXMinuten(sendTask);
+            if (ApplicationState.NachrichtenVerschicken)
+            {
+                var sendTask =
+                    await user.SendMessageAsync($"Auf dem Server {guildName} ist {userDisplayName} beigetreten!");
+                NachrichtenLöschenNachXMinuten(sendTask);
+            }
+            else
+            {
+                Console.WriteLine($"Jetzt wäre eine Nachricht verschickt worden an {user.Username} über {userDisplayName} auf dem Server {guildName}");
+            }
+       
         }
     }
 

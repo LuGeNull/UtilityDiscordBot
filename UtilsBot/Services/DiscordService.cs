@@ -47,7 +47,6 @@ public class DiscordService
         RegistriereCommands(_client);
         _voiceChannelChangeListener.StartPeriodicCheck(_client);
         
-
         return Task.CompletedTask;
     }
 
@@ -100,13 +99,14 @@ public class DiscordService
         {
             if (command.User is SocketGuildUser guildUser)
             {
+                await command.DeferAsync(ephemeral: true); 
                 var xp = _voiceChannelChangeListener._database.HoleUserXpMitId(guildUser.Id);
                 var level = _levelService.BerechneLevel(xp, 1000);
                 var nextLevel = level + 1;
                 var xpForNextLevel = 1000 * Math.Pow(1.3, nextLevel - 1);
                 var xpToNextLevel = (int)Math.Ceiling(xpForNextLevel - xp);
 
-                await command.RespondAsync(
+                await command.FollowupAsync(
                     $"Du bist zurzeit Level {level} und hast {xp} XP. " +
                     $"Für das nächste Level benötigst du noch {xpToNextLevel} XP.",
                     ephemeral: true);
