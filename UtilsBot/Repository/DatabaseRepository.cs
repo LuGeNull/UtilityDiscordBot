@@ -89,6 +89,7 @@ public class DatabaseRepository
    
     public void SaveData()
     {
+        Console.WriteLine(Path.Combine(AppContext.BaseDirectory, "data"));
         if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "data")))
         {
             Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
