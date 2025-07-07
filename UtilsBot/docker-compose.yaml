@@ -1,0 +1,9 @@
+services:
+  utility_bot:
+    image: utilitydiscordbot
+    container_name: utility
+    environment:
+     - DiscordToken=${Discord_Token}
+     - TestMode=True
+    volumes:
+     - ./data:/app/data
