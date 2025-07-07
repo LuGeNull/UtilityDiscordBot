@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
 
@@ -63,16 +64,22 @@ public class DiscordService
                 .Build(), guildId);
 
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("xp")
-                .WithDescription("Auskunft über deine derzeitige XP")
+                .WithName("info")
+                .WithDescription("Auskunft über deinen Fortschritt")
                 .Build(), guildId);
         }
     }
 
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
     {
+        
         if (command.CommandName == "interested")
         {
+            if (!ApplicationState.KommandosAktiviert)
+            {
+                return;
+            }
+            
             var von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
             var bis = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "bis")?.Value ?? 0L;
             if (von == bis)
@@ -95,23 +102,55 @@ public class DiscordService
             }
         }
 
-        if (command.CommandName == "xp")
+        
+        if (command.CommandName == "info")
         {
+            if (!ApplicationState.KommandosAktiviert)
+            {
+                return;
+            }
+            
             if (command.User is SocketGuildUser guildUser)
             {
-                Console.WriteLine($"{DateTime.UtcNow} vor");
-                await command.DeferAsync(ephemeral: true); 
-                Console.WriteLine($"[{DateTime.UtcNow}] DeferAsync ausgeführt");
-                var xp = _voiceChannelChangeListener._database.HoleUserXpMitId(guildUser.Id);
-                var level = _levelService.BerechneLevel(xp, 1000);
-                var nextLevel = level + 1;
-                var xpForNextLevel = 1000 * Math.Pow(1.3, nextLevel - 1);
-                var xpToNextLevel = (int)Math.Ceiling(xpForNextLevel - xp);
+                await command.DeferAsync(ephemeral: true);
+                int startXp = 1000;
+                double faktor = 1.3;
+                AllgemeinePerson person = _voiceChannelChangeListener._database.HoleUserMitId(guildUser.Id);
+                long xp = person.Xp;
+                long currentGain = person.BekommtZurzeitSoVielXp;
+                if (person.ZuletztImChannel.AddMinutes(1) < DateTime.Now)
+                {
+                    currentGain = 0;
+                }
+                
+                long platz = _voiceChannelChangeListener._database.HolePlatzDesUsersBeiXp(guildUser.Id);
 
-                await command.FollowupAsync(
-                    $"Du bist zurzeit Level {level} und hast {xp} XP. " +
-                    $"Für das nächste Level benötigst du noch {xpToNextLevel} XP.",
-                    ephemeral: true);
+                int level = 1;
+                int xpForNextLevel = startXp;
+                long restXp = xp;
+
+                while (restXp >= xpForNextLevel)
+                {
+                    restXp -= xpForNextLevel;
+                    level++;
+                    xpForNextLevel = (int)Math.Round(xpForNextLevel * faktor);
+                }
+
+                long xpToNextLevel = xpForNextLevel - restXp;
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("Dein Level-Fortschritt")
+                    .WithColor(Color.DarkRed)
+                    //.WithImageUrl(command.User.GetAvatarUrl())
+                    
+                    .AddField("Level",$"```{level}```", true)
+                    .AddField("XP",$"```{xp}```",true)
+                    .AddField($"XP bis Level {level+1}" , $"```{xpToNextLevel}```")
+                    .AddField("Dein Platz in Vergleich zu allen",$"```{platz}```")
+                    .AddField($"Du bekommst zurzeit", $"```{currentGain} XP / MIN```")
+                    .Build();
+                
+                await command.FollowupAsync(embed: embed, ephemeral: true);
             } 
         }
     }

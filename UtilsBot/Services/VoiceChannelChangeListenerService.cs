@@ -20,7 +20,6 @@ public class VoiceChannelChangeListenerService
 
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
     {
-        _database.LoadData();
         _database.DebugInfo();
         foreach (var guild in _client.Guilds)
         foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
@@ -28,9 +27,7 @@ public class VoiceChannelChangeListenerService
             NeueUserHinzufuegenFallsVorhanden(channel, _client);
             UpdateInfoUser(channel, _client);
         }
-
-        _database.SaveData();
-
+        
         return Task.CompletedTask;
     }
 
@@ -50,6 +47,7 @@ public class VoiceChannelChangeListenerService
             lokalePerson.ZuletztImChannel = DateTime.Now;
             UpdateExp(lokalePerson, user);
         }
+        _database.SaveChanges();
     }
 
     private async Task PersonenBenachrichtigen(List<AllgemeinePerson> zuBenachrichtigendePersonen,
@@ -91,30 +89,66 @@ public class VoiceChannelChangeListenerService
 
     private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
     {
-        if (user.IsStreaming && !user.IsSelfMuted && !user.IsSelfDeafened)
+        if (UserIsStreamingAndVideoingAndNotMutedAndDeafended(user))
         {
-            lokalePerson.Xp += ApplicationState.BaseXp * ApplicationState.StreamMultiplier;
-            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp * ApplicationState.StreamMultiplier} XP bekommen");
+            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
+            lokalePerson.Xp += xpToGain;
+            lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
+        }
+        
+        if (UserIsStreamingOrVideoingAndNotMutedOrDeafened(user))
+        {
+            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus;
+            lokalePerson.Xp += xpToGain;
+            lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         else
         {
-            if (user.IsSelfMuted && user.IsSelfDeafened)
+            if (UserIsFullMute(user))
             {
-                lokalePerson.Xp += ApplicationState.FullMuteBaseXp;
+                var xpToGain = ApplicationState.FullMuteBaseXp;
+                lokalePerson.Xp += xpToGain;
+                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
                 Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
             }
-            else if (user.IsSelfMuted && !user.IsSelfDeafened)
+            else if (MutedNotDeafened(user))
             {
-                lokalePerson.Xp += ApplicationState.OnlyMuteBaseXp;
+                var xpToGain = ApplicationState.OnlyMuteBaseXp;
+                lokalePerson.Xp += xpToGain;
+                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
                 Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
             }
             else
             {
-                lokalePerson.Xp += ApplicationState.BaseXp;
+                var xpToGain = ApplicationState.BaseXp;
+                lokalePerson.Xp += xpToGain;
+                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
                 Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
             }
         }
        
+    }
+
+    private static bool MutedNotDeafened(SocketGuildUser user)
+    {
+        return user.IsSelfMuted && !user.IsSelfDeafened;
+    }
+
+    private static bool UserIsFullMute(SocketGuildUser user)
+    {
+        return user.IsSelfMuted && user.IsSelfDeafened;
+    }
+
+    private static bool UserIsStreamingOrVideoingAndNotMutedOrDeafened(SocketGuildUser user)
+    {
+        return (user.IsStreaming || user.IsVideoing) && !user.IsSelfMuted && !user.IsSelfDeafened;
+    }
+
+    private static bool UserIsStreamingAndVideoingAndNotMutedAndDeafended(SocketGuildUser user)
+    {
+        return user.IsStreaming && user.IsVideoing && !user.IsSelfMuted && !user.IsSelfDeafened;
     }
 
     private void NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
@@ -143,6 +177,5 @@ public class VoiceChannelChangeListenerService
         long bis)
     {
         _database.AddUserToInterestedList(guildUserId, guildUserDisplayName, guildId, von, bis);
-        _database.SaveData();
     }
 }

@@ -1,13 +1,20 @@
-using System.Data.SqlTypes;
-using System.Text.Json;
-using Discord.WebSocket;
+using UtilsBot.Datenbank;
 
 namespace UtilsBot.Repository;
 
 public class DatabaseRepository
 {
-    public List<AllgemeinePerson?> _personen = new();
+    public BotDbContext _db;
 
+    public DatabaseRepository()
+    {
+        _db = new BotDbContext();
+    }
+
+    public void SaveChanges()
+    {
+        _db.SaveChanges();
+    }
     public void DebugInfo()
     {
         Console.WriteLine("\n");
@@ -15,15 +22,13 @@ public class DatabaseRepository
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
-        foreach (var person in _personen)
-        {
-            if (person != null)
-            {
-                Console.WriteLine($"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
-            }
-        }
+        foreach (var person in _db.AllgemeinePerson)
+            Console.WriteLine(
+                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
     }
-    public void AddUserToInterestedList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von, long bis)
+
+    public void AddUserToInterestedList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
+        long bis)
     {
         var willBenachrichtigtWerden = true;
         if (AlleIdsPersonen().Contains(guildUserId))
@@ -32,7 +37,7 @@ public class DatabaseRepository
             person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
-
+           
         }
         else
         {
@@ -40,65 +45,57 @@ public class DatabaseRepository
             person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
-            _personen.Add(person);
+            _db.AllgemeinePerson.Add(person);
+            
         }
+        _db.SaveChanges();
     }
 
-    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson, string displayNameDerBenachrichtigendenPerson, List<ulong> userImChannel)
+    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson,
+        string displayNameDerBenachrichtigendenPerson, List<ulong> userImChannel)
     {
-        return _personen.Where(p => !userImChannel.Contains(p.UserId) && p.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,displayNameDerBenachrichtigendenPerson) ).ToList();
+        var personen = _db.AllgemeinePerson.Where(p => !userImChannel.Contains(p.UserId)).ToList();
+        return personen.Where(a =>
+            a.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,
+                displayNameDerBenachrichtigendenPerson)).ToList();
     }
+
     public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
         var user = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
         user.WillBenachrichtigungenBekommen = false;
-        _personen.Add(user);
+        _db.AllgemeinePerson.Add(user);
+        _db.SaveChanges();
     }
 
 
     public List<ulong> AlleIdsPersonen()
     {
-        return this._personen.Select(p => p.UserId).ToList();
+        return _db.AllgemeinePerson.Select(p => p.UserId).ToList();
     }
 
     public AllgemeinePerson? HoleAllgemeinePersonMitId(ulong userId)
     {
-        return this._personen.FirstOrDefault(p => p.UserId == userId);
+        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId);
     }
-    
+
     public List<AllgemeinePerson?> HoleAllgemeinePersonenMitGuildId(ulong guildId)
     {
-        return this._personen.Where(p => p.GuildId == guildId).ToList();
+        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).ToList();
     }
-    
+
     public List<ulong> HoleAllgemeinePersonenIdsMitGuildId(ulong guildId)
     {
-        return this._personen.Where(p => p.GuildId == guildId).Select(a => a.UserId).ToList();
+        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).Select(p => p.UserId).ToList();
     }
 
-   
-    
-    public void LoadData()
+    public AllgemeinePerson HoleUserMitId(ulong guildUserId)
     {
-        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "data", "People.json")))
-        {
-            _personen = JsonSerializer.Deserialize<List<AllgemeinePerson>>(
-                File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "People.json"))) ?? new();
-        }
-    }
-   
-    public void SaveData()
-    {
-        Console.WriteLine(Path.Combine(AppContext.BaseDirectory, "data"));
-        if (!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "data")))
-        {
-            Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
-        } 
-        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "data", "People.json"), JsonSerializer.Serialize(_personen));
+        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == guildUserId);
     }
 
-    public long HoleUserXpMitId(ulong guildUserId)
+    public long HolePlatzDesUsersBeiXp(ulong guildUserId)
     {
-        return _personen?.FirstOrDefault(p => p.UserId == guildUserId).Xp ?? 0 ;
+        return _db.AllgemeinePerson.OrderByDescending(p => p.Xp).ToList().FindIndex(p => p.UserId == guildUserId) + 1;
     }
 }

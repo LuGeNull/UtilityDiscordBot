@@ -16,32 +16,39 @@ public class Program
 
     public static Task Main(string[] args)
     {
-        ApplicationState.TestMode = false;
+        
+        ApplicationState.TestMode = true;
+        ApplicationState.KommandosAktiviert = true;
+        var token = "";
         if (ApplicationState.TestMode)
         {
+            token = Environment.GetEnvironmentVariable("DiscordTokenTest");
             ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 1;
             ApplicationState.TickProXSekunden = 60000;
             ApplicationState.BaseXp = 4;
             ApplicationState.UserXMinutenAusDemChannel = 1;
-            ApplicationState.StreamMultiplier = 2;
+            ApplicationState.StreamOrVideoBonus = 2;
+            ApplicationState.VideoOnlyBonus = 2; 
+            ApplicationState.StreamAndVideoBonus = 4; 
             ApplicationState.FullMuteBaseXp = 2;
             ApplicationState.OnlyMuteBaseXp = 3;
             ApplicationState.NachrichtenVerschicken = false;
         }
         else
         {
+            token = Environment.GetEnvironmentVariable("DiscordToken");
             ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
             ApplicationState.TickProXSekunden = 60000;
             ApplicationState.BaseXp = 4;
             ApplicationState.UserXMinutenAusDemChannel = 30;
-            ApplicationState.StreamMultiplier = 2;
+            ApplicationState.StreamOrVideoBonus = 2;
+            ApplicationState.VideoOnlyBonus = 2; 
+            ApplicationState.StreamAndVideoBonus = 4; 
             ApplicationState.FullMuteBaseXp = 2;
             ApplicationState.OnlyMuteBaseXp = 3;
             ApplicationState.NachrichtenVerschicken = true;
         }
-       
         
-        var token = Environment.GetEnvironmentVariable("DiscordToken");
         if (token == null)
         {
             throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");

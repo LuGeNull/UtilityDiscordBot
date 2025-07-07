@@ -1,15 +1,17 @@
+using System.ComponentModel.DataAnnotations;
 using System.Runtime.InteropServices.JavaScript;
 
 namespace UtilsBot;
 
 public class AllgemeinePerson
 {
-    public ulong UserId { get; }
-    public string DisplayName { get; }
-    public ulong GuildId { get; }
+    [Key]
+    public ulong UserId { get; set;}
+    public string DisplayName { get; set; }
+    public ulong GuildId { get;set;  }
     public bool WillBenachrichtigungenBekommen { get; set; }
     public long Xp { get; set; }
-    
+    public long BekommtZurzeitSoVielXp { get; set; }
     public DateTime ZuletztImChannel { get; set; }
     public List<BenachrichtigungEingegangen> BenachrichtigungEingegangen { get; set; }
 
@@ -17,7 +19,10 @@ public class AllgemeinePerson
     public long BenachrichtigenZeitVon { get; set; }
     public long BenachrichtigenZeitBis { get; set; }
 
-    
+    public AllgemeinePerson()
+    {
+        
+    }
     public AllgemeinePerson(ulong userId, string displayName, ulong guildId)
     {
         this.UserId = userId;
