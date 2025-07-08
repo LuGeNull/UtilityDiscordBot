@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using System.Runtime.InteropServices.JavaScript;
 
-namespace UtilsBot;
+namespace UtilsBot.Domain.Models;
 
 public class AllgemeinePerson
 {

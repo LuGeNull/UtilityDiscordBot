@@ -1,28 +1,26 @@
-using UtilsBot.Datenbank;
+using Microsoft.EntityFrameworkCore;
+using UtilsBot.Domain.Contracts;
+using UtilsBot.Domain.Models;
 
-namespace UtilsBot.Repository;
+namespace UtilsBot.Datenbank;
 
-public class DatabaseRepository
+public class BotRepository : IBotRepository
 {
-    public BotDbContext _db;
-
-    public DatabaseRepository()
-    {
-        _db = new BotDbContext();
-    }
+    private readonly BotDbContext _db = new();
 
     public void SaveChanges()
     {
         _db.SaveChanges();
     }
-    public void DebugInfo()
+
+    public async Task DebugInfoAsync()
     {
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
-        foreach (var person in _db.AllgemeinePerson)
+        foreach (var person in await _db.AllgemeinePerson.ToListAsync())
             Console.WriteLine(
                 $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
     }
@@ -37,7 +35,6 @@ public class DatabaseRepository
             person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
-           
         }
         else
         {
@@ -46,8 +43,8 @@ public class DatabaseRepository
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
             _db.AllgemeinePerson.Add(person);
-            
         }
+
         _db.SaveChanges();
     }
 
@@ -69,7 +66,7 @@ public class DatabaseRepository
     }
 
 
-    public List<ulong> AlleIdsPersonen()
+    private List<ulong> AlleIdsPersonen()
     {
         return _db.AllgemeinePerson.Select(p => p.UserId).ToList();
     }

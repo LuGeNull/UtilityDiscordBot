@@ -15,12 +15,19 @@
       </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.6" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.6" />
       <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
     </ItemGroup>
 
     <ItemGroup>
       <None Remove="appsettings.json" />
       <None Update="botdata.sqlite">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="settings.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="settings.Development.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>
