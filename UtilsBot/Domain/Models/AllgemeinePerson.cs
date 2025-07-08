@@ -91,11 +91,4 @@ public class AllgemeinePerson
     {
         return HashCode.Combine(UserId, GuildId);
     }
-
-    public void SetzeBenachrichtigungsZeit(long von, long bis)
-    {
-        WillBenachrichtigungenBekommen = true;
-        this.BenachrichtigenZeitVon = von;
-        this.BenachrichtigenZeitBis = bis;
-    }
 }
