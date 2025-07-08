@@ -4,9 +4,10 @@ namespace UtilsBot.Domain.Models;
 
 public class BenachrichtigungEingegangen
 {
-    [Key]
-    public Guid Id { get; set; }
-    public ulong EingegangenVonUserID { get; set; }
-    public string EingegangenVonDisplayName { get; set; }
-    public DateTime EingegangenZeitpunkt { get; set; }
+    public ulong VersendetVonId { get; set; }
+    public AllgemeinePerson VersendetVon { get; set; }
+    
+    public ulong EmpfangenVonId { get; set; }
+    public AllgemeinePerson EmpfangenVon { get; set; }
+    public DateTime AbsendeZeitpunkt { get; set; }
 }
