@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using UtilsBot.Domain;
+using UtilsBot.Domain.Models;
 
 namespace UtilsBot.Datenbank;
 
@@ -12,5 +14,5 @@ public class BotDbContext : DbContext
     }
     
     protected override void OnConfiguring(DbContextOptionsBuilder options)
-        => options.UseSqlite("Data Source=botdata.sqlite");
+        => options.UseSqlite("Data Source=Data/botdata.sqlite");
 }

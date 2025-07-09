@@ -1,0 +1,16 @@
+﻿{
+  "BotConfig": {
+    "TestMode": true,
+    "KommandosAktiviert": true,
+    "NachrichtenWerdenGelöschtNachXMinuten": 1,
+    "NachrichtenVerschicken": false,
+    "BaseXp": 4,
+    "TickProXSekunden": 60000,
+    "UserXMinutenAusDemChannel": 1,
+    "StreamAndVideoBonus": 4,
+    "StreamOrVideoBonus": 2,
+    "VideoOnlyBonus": 2,
+    "FullMuteBaseXp": 2,
+    "OnlyMuteBaseXp": 3
+  }
+}

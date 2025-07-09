@@ -1,6 +1,6 @@
-namespace UtilsBot.Services;
+namespace UtilsBot.Domain;
 
-public class LevelService
+public class LevelLogic
 {
     
     public int BerechneLevel(long xp, int basisXp = 1300, double faktor = 1.3)
