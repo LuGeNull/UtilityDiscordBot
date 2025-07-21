@@ -1,8 +1,10 @@
+using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using UtilsBot.Domain;
 using UtilsBot.Domain.Contracts;
 using UtilsBot.Domain.Models;
 
@@ -10,8 +12,6 @@ namespace UtilsBot.Services;
 
 public class DiscordService : IHostedService
 {
-    private const string InterestedCommand = "interested";
-    private const string InfoCommand = "info";
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DiscordSocketClient _client;
     private readonly string _token;
@@ -40,10 +40,8 @@ public class DiscordService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _listener.Dispose();
         await _client.LogoutAsync();
         await _client.StopAsync();
-        await _client.DisposeAsync();
     }
 
     private async Task ReadyAsync()
@@ -70,7 +68,7 @@ public class DiscordService : IHostedService
         foreach (var guildId in client.Guilds.Select(g => g.Id))
         {
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName(InterestedCommand)
+                .WithName("interested")
                 .WithDescription("Bekomme Benachrichtigungen wenn Personen einen Discord Channel beitreten")
                 .AddOption("von", ApplicationCommandOptionType.Integer, "Von (z.B Wert:15 für ab 15 Uhr Nachmittags)",
                     true)
@@ -78,7 +76,7 @@ public class DiscordService : IHostedService
                 .Build(), guildId);
 
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName(InfoCommand)
+                .WithName("info")
                 .WithDescription("Auskunft über deinen Fortschritt")
                 .Build(), guildId);
         }
@@ -86,23 +84,87 @@ public class DiscordService : IHostedService
 
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
     {
-        if (!_config.KommandosAktiviert)
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<IBotRepository>();
+        
+        if (command.CommandName == "interested")
         {
-            return;
+            if (!_config.KommandosAktiviert)
+            {
+                return;
+            }
+
+            var von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
+            var bis = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "bis")?.Value ?? 0L;
+            if (von == bis)
+            {
+                von = 0;
+                bis = 24;
+            }
+
+            if (von < 0 || von > 24 || bis < 0 || bis > 24)
+            {
+                await command.RespondAsync("Bitte gib Werte zwischen 0 und 24 an.", ephemeral: true);
+                return;
+            }
+
+            if (command.User is SocketGuildUser guildUser)
+            {
+                repository.AddUserToInterestedList(
+                    guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
+                await command.RespondAsync("I'll notify you!", ephemeral: true);
+            }
         }
 
-        using var scope = _scopeFactory.CreateScope();
-        var discordCommandHandler = scope.ServiceProvider.GetRequiredService<IDiscordCommandHandler>();
-        switch (command.CommandName)
+
+        if (command.CommandName == "info")
         {
-            case InterestedCommand:
-                await discordCommandHandler.InterestedAsync(command);
-                break;
-            case InfoCommand:
-                await discordCommandHandler.InfoAsync(command);
-                break;
-            default:
-                throw new ArgumentException($"Command {command.CommandName} not implemented");
+            if (!_config.KommandosAktiviert)
+            {
+                return;
+            }
+
+            if (command.User is SocketGuildUser guildUser)
+            {
+                await command.DeferAsync(ephemeral: true);
+                int startXp = 1000;
+                double faktor = 1.3;
+                AllgemeinePerson person = repository.HoleUserMitId(guildUser.Id);
+                long xp = person.Xp;
+                long currentGain = person.BekommtZurzeitSoVielXp;
+                if (person.ZuletztImChannel.AddMinutes(1) < DateTime.Now)
+                {
+                    currentGain = 0;
+                }
+
+                long platz = repository.HolePlatzDesUsersBeiXp(guildUser.Id);
+
+                int level = 1;
+                int xpForNextLevel = startXp;
+                long restXp = xp;
+
+                while (restXp >= xpForNextLevel)
+                {
+                    restXp -= xpForNextLevel;
+                    level++;
+                    xpForNextLevel = (int)Math.Round(xpForNextLevel * faktor);
+                }
+
+                long xpToNextLevel = xpForNextLevel - restXp;
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("Dein Level-Fortschritt")
+                    .WithColor(Color.DarkRed)
+                    //.WithImageUrl(command.User.GetAvatarUrl())
+                    .AddField("Level", $"```{level}```", true)
+                    .AddField("XP", $"```{xp}```", true)
+                    .AddField($"XP bis Level {level + 1}", $"```{xpToNextLevel}```")
+                    .AddField("Dein Platz in Vergleich zu allen", $"```{platz}```")
+                    .AddField($"Du bekommst zurzeit", $"```{currentGain} XP / MIN```")
+                    .Build();
+
+                await command.FollowupAsync(embed: embed, ephemeral: true);
+            }
         }
     }
 

@@ -7,7 +7,7 @@ using Timer = System.Timers.Timer;
 
 namespace UtilsBot.Services;
 
-public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory, BotConfig config) : IDisposable
+public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory, BotConfig config) : IDisposable // What the flip?
 {
     private Timer _checkTimer = new();
 
@@ -26,33 +26,33 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
             foreach (var guild in client.Guilds)
             foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
             {
-                await NeueUserHinzufuegenFallsVorhandenAsync(repo, channel);
-                await UpdateInfoUserAsync(repo, channel, client);
+                NeueUserHinzufuegenFallsVorhanden(repo, channel);
+                UpdateInfoUser(repo, channel, client);
             }
         });
     }
 
-    private async Task UpdateInfoUserAsync(IBotRepository repo, SocketVoiceChannel channel, DiscordSocketClient client)
+    private void UpdateInfoUser(IBotRepository repo, SocketVoiceChannel channel, DiscordSocketClient client)
     {
         var connectedUsers = channel.ConnectedUsers;
         foreach (var user in connectedUsers)
         {
-            var lokalePerson = await repo.HoleAllgemeinePersonMitIdAsync(user.Id);
+            var lokalePerson = repo.HoleAllgemeinePersonMitId(user.Id);
             if (SollFuerDiePersonEineBenachrichtigungVerschicktWerden(lokalePerson))
             {
-                var ZuBenachrichtigendePerson = await repo.PersonenDieBenachrichtigtWerdenWollenAsync(user.Id,
+                var ZuBenachrichtigendePerson = repo.PersonenDieBenachrichtigtWerdenWollen(user.Id,
                     user.DisplayName, connectedUsers.Select(cu => cu.Id).ToList());
-                await PersonenBenachrichtigenAsync(ZuBenachrichtigendePerson, client, user.DisplayName, channel.Guild.Name);
+                PersonenBenachrichtigen(ZuBenachrichtigendePerson, client, user.DisplayName, channel.Guild.Name);
             }
 
             lokalePerson.ZuletztImChannel = DateTime.Now;
             UpdateExp(lokalePerson, user);
         }
 
-        await repo.SaveChangesAsync();
+        repo.SaveChanges();
     }
 
-    private async Task PersonenBenachrichtigenAsync(List<AllgemeinePerson> zuBenachrichtigendePersonen,
+    private async Task PersonenBenachrichtigen(List<AllgemeinePerson> zuBenachrichtigendePersonen,
         DiscordSocketClient client, string userDisplayName, string guildName)
     {
         foreach (var zuBenachrichtigendePerson in zuBenachrichtigendePersonen)
@@ -62,7 +62,7 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
             {
                 var sendTask =
                     await user.SendMessageAsync($"Auf dem Server {guildName} ist {userDisplayName} beigetreten!");
-                NachrichtenLöschenNachXMinutenAsync(sendTask);
+                NachrichtenLöschenNachXMinuten(sendTask);
             }
             else
             {
@@ -72,7 +72,7 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
         }
     }
 
-    private void NachrichtenLöschenNachXMinutenAsync(IUserMessage sendTask)
+    private void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
     {
         _ = Task.Run(async () =>
         {
@@ -84,8 +84,9 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
     private bool SollFuerDiePersonEineBenachrichtigungVerschicktWerden(AllgemeinePerson? lokalePerson)
     {
         if (config.TestMode) return true;
-        return lokalePerson.ZuletztImChannel.AddMinutes(config.UserXMinutenAusDemChannel) <
-               DateTime.Now;
+        if (lokalePerson.ZuletztImChannel.AddMinutes(config.UserXMinutenAusDemChannel) <
+            DateTime.Now) return true;
+        return false;
     }
 
     private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
@@ -153,15 +154,15 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
         return user.IsStreaming && user.IsVideoing && !user.IsSelfMuted && !user.IsSelfDeafened;
     }
 
-    private async Task NeueUserHinzufuegenFallsVorhandenAsync(IBotRepository repo, SocketVoiceChannel channel)
+    private void NeueUserHinzufuegenFallsVorhanden(IBotRepository repo, SocketVoiceChannel channel)
     {
         var neueUser = channel.ConnectedUsers.Select(c => c.Id)
-            .Except(await repo.HoleAllgemeinePersonenIdsMitGuildIdAsync(channel.Guild.Id)).ToList();
+            .Except(repo.HoleAllgemeinePersonenIdsMitGuildId(channel.Guild.Id));
         if (neueUser.Any())
             foreach (var user in neueUser)
             {
                 var userInQuestion = channel.ConnectedUsers.First(u => u.Id == user);
-                await repo.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                repo.AddUser(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
             }
     }
 

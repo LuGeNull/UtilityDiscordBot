@@ -8,9 +8,9 @@ public class BotRepository : IBotRepository
 {
     private readonly BotDbContext _db = new();
 
-    public async Task SaveChangesAsync()
+    public void SaveChanges()
     {
-        await _db.SaveChangesAsync();
+        _db.SaveChanges();
     }
 
     public async Task DebugInfoAsync()
@@ -25,13 +25,13 @@ public class BotRepository : IBotRepository
                 $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
     }
 
-    public async Task AddUserToInterestedListAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
+    public void AddUserToInterestedList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
         long bis)
     {
         var willBenachrichtigtWerden = true;
-        if ((await AlleIdsPersonen()).Contains(guildUserId))
+        if (AlleIdsPersonen().Contains(guildUserId))
         {
-            var person = await HoleAllgemeinePersonMitIdAsync(guildUserId);
+            var person = HoleAllgemeinePersonMitId(guildUserId);
             person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
@@ -45,51 +45,54 @@ public class BotRepository : IBotRepository
             _db.AllgemeinePerson.Add(person);
         }
 
-        await _db.SaveChangesAsync();
+        _db.SaveChanges();
     }
 
-    public async Task<List<AllgemeinePerson>> PersonenDieBenachrichtigtWerdenWollenAsync(
-        ulong userIdDerBenachrichtigendenPerson,
+    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson,
         string displayNameDerBenachrichtigendenPerson, List<ulong> userImChannel)
     {
-        var personen = await _db.AllgemeinePerson.Where(p => !userImChannel.Contains(p.UserId)).ToListAsync();
+        var personen = _db.AllgemeinePerson.Where(p => !userImChannel.Contains(p.UserId)).ToList();
         return personen.Where(a =>
             a.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,
                 displayNameDerBenachrichtigendenPerson)).ToList();
     }
 
-    public async Task AddUserAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId)
+    public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
         var user = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
         user.WillBenachrichtigungenBekommen = false;
-        await _db.AllgemeinePerson.AddAsync(user);
-        await _db.SaveChangesAsync();
+        _db.AllgemeinePerson.Add(user);
+        _db.SaveChanges();
     }
 
 
-    private async Task<List<ulong>> AlleIdsPersonen()
+    private List<ulong> AlleIdsPersonen()
     {
-        return await _db.AllgemeinePerson.Select(p => p.UserId).ToListAsync();
+        return _db.AllgemeinePerson.Select(p => p.UserId).ToList();
     }
 
-    public async Task<AllgemeinePerson?> HoleAllgemeinePersonMitIdAsync(ulong userId)
+    public AllgemeinePerson? HoleAllgemeinePersonMitId(ulong userId)
     {
-        return await _db.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId);
+        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId);
     }
 
-    public async Task<List<ulong>> HoleAllgemeinePersonenIdsMitGuildIdAsync(ulong guildId)
+    public List<AllgemeinePerson?> HoleAllgemeinePersonenMitGuildId(ulong guildId)
     {
-        return await _db.AllgemeinePerson.Where(p => p.GuildId == guildId).Select(p => p.UserId).ToListAsync();
+        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).ToList();
     }
 
-    public async Task<AllgemeinePerson> HoleUserMitIdAsync(ulong guildUserId)
+    public List<ulong> HoleAllgemeinePersonenIdsMitGuildId(ulong guildId)
     {
-        return await _db.AllgemeinePerson.FirstAsync(p => p.UserId == guildUserId);
+        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).Select(p => p.UserId).ToList();
     }
 
-    public async Task<long> HolePlatzDesUsersBeiXpAsync(ulong guildUserId)
+    public AllgemeinePerson HoleUserMitId(ulong guildUserId)
     {
-        var list = await _db.AllgemeinePerson.OrderByDescending(p => p.Xp).ToListAsync();
-        return list.FindIndex(p => p.UserId == guildUserId) + 1;
+        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == guildUserId);
+    }
+
+    public long HolePlatzDesUsersBeiXp(ulong guildUserId)
+    {
+        return _db.AllgemeinePerson.OrderByDescending(p => p.Xp).ToList().FindIndex(p => p.UserId == guildUserId) + 1;
     }
 }

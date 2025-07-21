@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using UtilsBot.Datenbank;
-using UtilsBot.Domain;
 using UtilsBot.Domain.Contracts;
 using UtilsBot.Domain.Models;
 
@@ -31,9 +30,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.Configure<Secrets>(options => { options.DiscordToken = token; });
 
         services.AddScoped<IBotRepository, BotRepository>();
-        services.AddScoped<IDiscordCommandHandler, DiscordCommandHandler>();
-        services.AddScoped<IDomainCommandHandler, DomainCommandHandler>();
-        
+
         services.AddSingleton<DiscordService>();
         services.AddHostedService(provider => provider.GetRequiredService<DiscordService>());
     })
