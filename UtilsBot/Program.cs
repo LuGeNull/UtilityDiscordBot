@@ -1,8 +1,10 @@
-﻿using UtilsBot.Repository;
+﻿using Microsoft.EntityFrameworkCore;
+using UtilsBot.Repository;
 using UtilsBot.Services;
 using Timer = System.Timers.Timer;
 using Microsoft.Extensions.Configuration;
 using UtilsBot;
+using UtilsBot.Datenbank;
 
 public class Program
 {
@@ -15,9 +17,18 @@ public class Program
 
     public static Task Main(string[] args)
     {
+        DatabaseMigration();
         UeberpruefeBotToken();
         return new Program(new DiscordService(new DiscordServerChangeMonitor(new DatabaseRepository()), ApplicationState.Token))
             .MainAsync();
+    }
+
+    private static void DatabaseMigration()
+    {
+        using (var context = new BotDbContext())
+        {
+            context.Database.Migrate();
+        }
     }
 
     private static void UeberpruefeBotToken()
