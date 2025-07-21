@@ -5,17 +5,16 @@ using Timer = System.Timers.Timer;
 
 namespace UtilsBot.Services;
 
-public class VoiceChannelChangeListenerService
+public class DiscordServerChangeMonitor
 {
     private Timer _checkTimer;
     public DatabaseRepository _database;
-    public IEnumerable<Guild> _guilds;
+    
 
-    public VoiceChannelChangeListenerService(DatabaseRepository database)
+    public DiscordServerChangeMonitor(DatabaseRepository database)
     {
         _database = database;
         _checkTimer = new Timer();
-        _guilds = new List<Guild>();
     }
 
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
@@ -37,37 +36,10 @@ public class VoiceChannelChangeListenerService
         foreach (var user in connectedUsers)
         {
             var lokalePerson = _database.HoleAllgemeinePersonMitId(user.Id);
-            if (SollFuerDiePersonEineBenachrichtigungVerschicktWerden(lokalePerson))
-            {
-                var ZuBenachrichtigendePerson = _database.PersonenDieBenachrichtigtWerdenWollen(user.Id,
-                    user.DisplayName, connectedUsers.Select(cu => cu.Id).ToList());
-                PersonenBenachrichtigen(ZuBenachrichtigendePerson, client, user.DisplayName, channel.Guild.Name);
-            }
-
             lokalePerson.ZuletztImChannel = DateTime.Now;
             UpdateExp(lokalePerson, user);
         }
         _database.SaveChanges();
-    }
-
-    private async Task PersonenBenachrichtigen(List<AllgemeinePerson> zuBenachrichtigendePersonen,
-        DiscordSocketClient client, string userDisplayName, string guildName)
-    {
-        foreach (var zuBenachrichtigendePerson in zuBenachrichtigendePersonen)
-        {
-            var user = await client.GetUserAsync(zuBenachrichtigendePerson.UserId);
-            if (ApplicationState.NachrichtenVerschicken)
-            {
-                var sendTask =
-                    await user.SendMessageAsync($"Auf dem Server {guildName} ist {userDisplayName} beigetreten!");
-                NachrichtenLöschenNachXMinuten(sendTask);
-            }
-            else
-            {
-                Console.WriteLine($"Jetzt wäre eine Nachricht verschickt worden an {user.Username} über {userDisplayName} auf dem Server {guildName}");
-            }
-       
-        }
     }
 
     private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
@@ -79,16 +51,9 @@ public class VoiceChannelChangeListenerService
         });
     }
 
-    private bool SollFuerDiePersonEineBenachrichtigungVerschicktWerden(AllgemeinePerson? lokalePerson)
-    {
-        if (ApplicationState.TestMode) return true;
-        if (lokalePerson.ZuletztImChannel.AddMinutes(ApplicationState.UserXMinutenAusDemChannel) <
-            DateTime.Now) return true;
-        return false;
-    }
-
     private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
     {
+        
         if (UserIsStreamingAndVideoingAndNotMutedAndDeafended(user))
         {
             var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
@@ -170,12 +135,5 @@ public class VoiceChannelChangeListenerService
         _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
         _checkTimer.AutoReset = true;
         _checkTimer.Start();
-    }
-
-
-    public void AddUserToInterestedPeopleList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
-        long bis)
-    {
-        _database.AddUserToInterestedList(guildUserId, guildUserDisplayName, guildId, von, bis);
     }
 }

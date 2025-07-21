@@ -17,57 +17,24 @@ public class DatabaseRepository
     }
     public void DebugInfo()
     {
-        Console.WriteLine("\n");
-        Console.WriteLine("\n");
-        Console.WriteLine("\n");
-        Console.WriteLine("\n");
-        Console.WriteLine("\n");
         foreach (var person in _db.AllgemeinePerson)
+        {
+            Console.WriteLine("\n");
             Console.WriteLine(
-                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
-    }
+                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
 
-    public void AddUserToInterestedList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
-        long bis)
-    {
-        var willBenachrichtigtWerden = true;
-        if (AlleIdsPersonen().Contains(guildUserId))
-        {
-            var person = HoleAllgemeinePersonMitId(guildUserId);
-            person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
-            person.BenachrichtigenZeitVon = von;
-            person.BenachrichtigenZeitBis = bis;
-           
         }
-        else
-        {
-            var person = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
-            person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
-            person.BenachrichtigenZeitVon = von;
-            person.BenachrichtigenZeitBis = bis;
-            _db.AllgemeinePerson.Add(person);
-            
-        }
-        _db.SaveChanges();
-    }
-
-    public List<AllgemeinePerson> PersonenDieBenachrichtigtWerdenWollen(ulong userIdDerBenachrichtigendenPerson,
-        string displayNameDerBenachrichtigendenPerson, List<ulong> userImChannel)
-    {
-        var personen = _db.AllgemeinePerson.Where(p => !userImChannel.Contains(p.UserId)).ToList();
-        return personen.Where(a =>
-            a.KannUndWilldiePersonBenachrichtigtWerden(userIdDerBenachrichtigendenPerson,
-                displayNameDerBenachrichtigendenPerson)).ToList();
     }
 
     public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
-        var user = new AllgemeinePerson(guildUserId, guildUserDisplayName, guildId);
-        user.WillBenachrichtigungenBekommen = false;
+        var user = new AllgemeinePerson();
+        user.UserId = guildUserId;
+        user.DisplayName = guildUserDisplayName;
+        user.GuildId = guildId;
         _db.AllgemeinePerson.Add(user);
         _db.SaveChanges();
     }
-
 
     public List<ulong> AlleIdsPersonen()
     {

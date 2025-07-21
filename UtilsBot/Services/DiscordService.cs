@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
+using UtilsBot.Request;
 
 namespace UtilsBot.Services;
 
@@ -9,13 +10,13 @@ public class DiscordService
     private readonly DiscordSocketClient _client;
     private readonly LevelService _levelService;
     private readonly string _token;
-    private readonly VoiceChannelChangeListenerService _voiceChannelChangeListener;
+    private readonly DiscordServerChangeMonitor _discordServerChangeListener;
 
-    public DiscordService(VoiceChannelChangeListenerService voiceChannelChangeListener, string token)
+    public DiscordService(DiscordServerChangeMonitor discordServerChangeListener, string token)
     {
         _levelService = new LevelService();
         _token = token;
-        _voiceChannelChangeListener = voiceChannelChangeListener;
+        _discordServerChangeListener = discordServerChangeListener;
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
@@ -39,14 +40,14 @@ public class DiscordService
         _client.MessageReceived += async (message) =>
         {
             if (message.Author.IsBot) return;
-            
+            _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message));
             Console.WriteLine($"Nachricht von {message.Author.Username}: {message.Content}");
         };
         
         _client.SlashCommandExecuted += SlashCommandHandlerAsync;
 
         RegistriereCommands(_client);
-        _voiceChannelChangeListener.StartPeriodicCheck(_client);
+        _discordServerChangeListener.StartPeriodicCheck(_client);
         
         return Task.CompletedTask;
     }
@@ -56,15 +57,7 @@ public class DiscordService
         foreach (var guildId in client.Guilds.Select(g => g.Id))
         {
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("interested")
-                .WithDescription("Bekomme Benachrichtigungen wenn Personen einen Discord Channel beitreten")
-                .AddOption("von", ApplicationCommandOptionType.Integer, "Von (z.B Wert:15 für ab 15 Uhr Nachmittags)",
-                    true)
-                .AddOption("bis", ApplicationCommandOptionType.Integer, "Bis (z.B Wert:23 für bis 23 Uhr Abends)", true)
-                .Build(), guildId);
-
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("info")
+                .WithName("xp")
                 .WithDescription("Auskunft über deinen Fortschritt")
                 .Build(), guildId);
         }
@@ -72,38 +65,7 @@ public class DiscordService
 
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
     {
-        
-        if (command.CommandName == "interested")
-        {
-            if (!ApplicationState.KommandosAktiviert)
-            {
-                return;
-            }
-            
-            var von = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "von")?.Value ?? 0L;
-            var bis = (long?)command.Data.Options.FirstOrDefault(x => x.Name == "bis")?.Value ?? 0L;
-            if (von == bis)
-            {
-                von = 0;
-                bis = 24;
-            }
-            if (von < 0 || von > 24 || bis < 0 || bis > 24)
-            {
-                
-                await command.RespondAsync("Bitte gib Werte zwischen 0 und 24 an.", ephemeral: true);
-                return;
-            }
-
-            if (command.User is SocketGuildUser guildUser)
-            {
-                _voiceChannelChangeListener.AddUserToInterestedPeopleList(
-                    guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id, von, bis);
-                await command.RespondAsync("I'll notify you!", ephemeral: true);
-            }
-        }
-
-        
-        if (command.CommandName == "info")
+        if (command.CommandName == "xp")
         {
             if (!ApplicationState.KommandosAktiviert)
             {
@@ -113,41 +75,18 @@ public class DiscordService
             if (command.User is SocketGuildUser guildUser)
             {
                 await command.DeferAsync(ephemeral: true);
-                int startXp = 1000;
-                double faktor = 1.3;
-                AllgemeinePerson person = _voiceChannelChangeListener._database.HoleUserMitId(guildUser.Id);
-                long xp = person.Xp;
-                long currentGain = person.BekommtZurzeitSoVielXp;
-                if (person.ZuletztImChannel.AddMinutes(1) < DateTime.Now)
-                {
-                    currentGain = 0;
-                }
+                var xpResponse = _levelService.HandleRequest(new XpRequest(guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id));
                 
-                long platz = _voiceChannelChangeListener._database.HolePlatzDesUsersBeiXp(guildUser.Id);
-
-                int level = 1;
-                int xpForNextLevel = startXp;
-                long restXp = xp;
-
-                while (restXp >= xpForNextLevel)
-                {
-                    restXp -= xpForNextLevel;
-                    level++;
-                    xpForNextLevel = (int)Math.Round(xpForNextLevel * faktor);
-                }
-
-                long xpToNextLevel = xpForNextLevel - restXp;
-
                 var embed = new EmbedBuilder()
                     .WithTitle("Dein Level-Fortschritt")
                     .WithColor(Color.DarkRed)
                     //.WithImageUrl(command.User.GetAvatarUrl())
                     
-                    .AddField("Level",$"```{level}```", true)
-                    .AddField("XP",$"```{xp}```",true)
-                    .AddField($"XP bis Level {level+1}" , $"```{xpToNextLevel}```")
-                    .AddField("Dein Platz in Vergleich zu allen",$"```{platz}```")
-                    .AddField($"Du bekommst zurzeit", $"```{currentGain} XP / MIN```")
+                    .AddField("Level",$"```{xpResponse.level}```", true)
+                    .AddField("XP",$"```{xpResponse.xp}```",true)
+                    .AddField($"XP bis Level {xpResponse.level+1}" , $"```{xpResponse.xpToNextLevel}```")
+                    .AddField("Dein Platz in Vergleich zu allen",$"```{xpResponse.platzDerPerson}```")
+                    .AddField($"Du bekommst zurzeit", $"```{xpResponse.currentGain} XP / MIN```")
                     .Build();
                 
                 await command.FollowupAsync(embed: embed, ephemeral: true);

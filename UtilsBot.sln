@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilsBot", "UtilsBot\UtilsBot.csproj", "{CE8D0BC3-E355-4569-AE34-0E799C6DF518}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilsBotTest", "UtilsBotTest\UtilsBotTest.csproj", "{F33AE310-1908-4E6D-B704-172187CE3BF6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,9 +12,5 @@ Global
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F33AE310-1908-4E6D-B704-172187CE3BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F33AE310-1908-4E6D-B704-172187CE3BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F33AE310-1908-4E6D-B704-172187CE3BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F33AE310-1908-4E6D-B704-172187CE3BF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

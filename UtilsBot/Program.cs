@@ -11,51 +11,40 @@ public class Program
     public Program(DiscordService discordService)
     {
         _discordService = discordService;
-       
     }
 
     public static Task Main(string[] args)
     {
+        UeberpruefeBotToken();
+        return new Program(new DiscordService(new DiscordServerChangeMonitor(new DatabaseRepository()), ApplicationState.Token))
+            .MainAsync();
+    }
+
+    private static void UeberpruefeBotToken()
+    {
+        ApplicationState.TestToken = Environment.GetEnvironmentVariable("DiscordTokenTest") ?? "";
+        ApplicationState.ProdToken = Environment.GetEnvironmentVariable("DiscordToken") ?? "";
         
-        ApplicationState.TestMode = true;
-        ApplicationState.KommandosAktiviert = true;
-        var token = "";
-        if (ApplicationState.TestMode)
+        if (string.IsNullOrEmpty(ApplicationState.TestToken) || string.IsNullOrEmpty(ApplicationState.ProdToken))
         {
-            token = Environment.GetEnvironmentVariable("DiscordTokenTest");
-            ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 1;
-            ApplicationState.TickProXSekunden = 60000;
-            ApplicationState.BaseXp = 4;
-            ApplicationState.UserXMinutenAusDemChannel = 1;
-            ApplicationState.StreamOrVideoBonus = 2;
-            ApplicationState.VideoOnlyBonus = 2; 
-            ApplicationState.StreamAndVideoBonus = 4; 
-            ApplicationState.FullMuteBaseXp = 2;
-            ApplicationState.OnlyMuteBaseXp = 3;
-            ApplicationState.NachrichtenVerschicken = false;
+            if (string.IsNullOrEmpty(ApplicationState.TestToken))
+            {
+                ApplicationState.TestMode = false;
+            }
+            if (string.IsNullOrEmpty(ApplicationState.ProdToken))
+            {
+                ApplicationState.TestMode = true;
+            }
+
+            if (string.IsNullOrEmpty(ApplicationState.TestToken) && string.IsNullOrEmpty(ApplicationState.ProdToken))
+            {
+                throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
+            }
         }
         else
         {
-            token = Environment.GetEnvironmentVariable("DiscordToken");
-            ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten = 30;
-            ApplicationState.TickProXSekunden = 60000;
-            ApplicationState.BaseXp = 4;
-            ApplicationState.UserXMinutenAusDemChannel = 30;
-            ApplicationState.StreamOrVideoBonus = 2;
-            ApplicationState.VideoOnlyBonus = 2; 
-            ApplicationState.StreamAndVideoBonus = 4; 
-            ApplicationState.FullMuteBaseXp = 2;
-            ApplicationState.OnlyMuteBaseXp = 3;
-            ApplicationState.NachrichtenVerschicken = true;
+            ApplicationState.TestMode = true;
         }
-        
-        if (token == null)
-        {
-            throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
-        }
-        
-        return new Program(new DiscordService(new VoiceChannelChangeListenerService(new DatabaseRepository()), token))
-            .MainAsync();
     }
 
     public async Task MainAsync()

@@ -23,6 +23,19 @@
       <None Update="botdata.sqlite">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
+      <None Update="Data\botdata.sqlite">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Data\" />
+      <Folder Include="Domain\ValueObjects\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Migrations\20250706215829_MomentanerXpGain.cs" />
+      <Compile Remove="Migrations\20250706215829_MomentanerXpGain.Designer.cs" />
     </ItemGroup>
 
 </Project>
