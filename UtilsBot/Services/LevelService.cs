@@ -114,7 +114,7 @@ public class LevelService
         
         long currentGain = person.BekommtZurzeitSoVielXp;
         
-        if (person.ZuletztImChannel.AddMinutes(1) < DateTime.Now)
+        if (person.ZuletztImChannel.AddMinutes(3) < DateTime.Now)
         {
             currentGain = 0;
         }

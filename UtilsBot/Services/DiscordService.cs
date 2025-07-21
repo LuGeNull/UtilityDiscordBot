@@ -80,8 +80,6 @@ public class DiscordService
                 var embed = new EmbedBuilder()
                     .WithTitle("Dein Level-Fortschritt")
                     .WithColor(Color.DarkRed)
-                    //.WithImageUrl(command.User.GetAvatarUrl())
-                    
                     .AddField("Level",$"```{xpResponse.level}```", true)
                     .AddField("XP",$"```{xpResponse.xp}```",true)
                     .AddField($"XP bis Level {xpResponse.level+1}" , $"```{xpResponse.xpToNextLevel}```")
