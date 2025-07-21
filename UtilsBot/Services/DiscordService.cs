@@ -1,84 +1,63 @@
+using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using UtilsBot.Domain.Contracts;
-using UtilsBot.Domain.Models;
+using UtilsBot.Request;
 
 namespace UtilsBot.Services;
 
-public class DiscordService : IHostedService
+public class DiscordService
 {
-    private const string InterestedCommand = "interested";
-    private const string InfoCommand = "info";
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly DiscordSocketClient _client;
+    private readonly LevelService _levelService;
     private readonly string _token;
-    private readonly BotConfig _config;
-    private readonly VoiceChannelChangeListenerService _listener;
+    private readonly DiscordServerChangeMonitor _discordServerChangeListener;
 
-    public DiscordService(IOptions<BotConfig> config, IOptions<Secrets> secrets, IServiceScopeFactory scopeFactory)
+    public DiscordService(DiscordServerChangeMonitor discordServerChangeListener, string token)
     {
-        _scopeFactory = scopeFactory;
-        _token = secrets.Value.DiscordToken;
-        _config = config.Value;
+        _levelService = new LevelService();
+        _token = token;
+        _discordServerChangeListener = discordServerChangeListener;
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
         });
         _client.Log += LogAsync;
         _client.Ready += ReadyAsync;
-        _listener = new VoiceChannelChangeListenerService(scopeFactory, config.Value);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartWorking()
     {
         await _client.LoginAsync(TokenType.Bot, _token);
         await _client.StartAsync();
+
+        await Task.Delay(-1);
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        _listener.Dispose();
-        await _client.LogoutAsync();
-        await _client.StopAsync();
-        await _client.DisposeAsync();
-    }
-
-    private async Task ReadyAsync()
+    private Task ReadyAsync()
     {
         Console.WriteLine($"Online as: {_client.CurrentUser}");
-
-        _client.MessageReceived += message =>
+        
+        _client.MessageReceived += async (message) =>
         {
-            if (message.Author.IsBot) return Task.CompletedTask;
-
+            if (message.Author.IsBot) return;
+            _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message));
             Console.WriteLine($"Nachricht von {message.Author.Username}: {message.Content}");
-            return Task.CompletedTask;
         };
-
+        
         _client.SlashCommandExecuted += SlashCommandHandlerAsync;
 
-        await RegistriereCommands(_client);
-
-        await _listener.StartPeriodicCheck(_client);
+        RegistriereCommands(_client);
+        _discordServerChangeListener.StartPeriodicCheck(_client);
+        
+        return Task.CompletedTask;
     }
 
-    private async Task RegistriereCommands(DiscordSocketClient client)
+    private async void RegistriereCommands(DiscordSocketClient client)
     {
         foreach (var guildId in client.Guilds.Select(g => g.Id))
         {
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName(InterestedCommand)
-                .WithDescription("Bekomme Benachrichtigungen wenn Personen einen Discord Channel beitreten")
-                .AddOption("von", ApplicationCommandOptionType.Integer, "Von (z.B Wert:15 für ab 15 Uhr Nachmittags)",
-                    true)
-                .AddOption("bis", ApplicationCommandOptionType.Integer, "Bis (z.B Wert:23 für bis 23 Uhr Abends)", true)
-                .Build(), guildId);
-
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName(InfoCommand)
+                .WithName("xp")
                 .WithDescription("Auskunft über deinen Fortschritt")
                 .Build(), guildId);
         }
@@ -86,27 +65,36 @@ public class DiscordService : IHostedService
 
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
     {
-        if (!_config.KommandosAktiviert)
+        if (command.CommandName == "xp")
         {
-            return;
-        }
-
-        using var scope = _scopeFactory.CreateScope();
-        var discordCommandHandler = scope.ServiceProvider.GetRequiredService<IDiscordCommandHandler>();
-        switch (command.CommandName)
-        {
-            case InterestedCommand:
-                await discordCommandHandler.InterestedAsync(command);
-                break;
-            case InfoCommand:
-                await discordCommandHandler.InfoAsync(command);
-                break;
-            default:
-                throw new ArgumentException($"Command {command.CommandName} not implemented");
+            if (!ApplicationState.KommandosAktiviert)
+            {
+                return;
+            }
+            
+            if (command.User is SocketGuildUser guildUser)
+            {
+                await command.DeferAsync(ephemeral: true);
+                var xpResponse = _levelService.HandleRequest(new XpRequest(guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id));
+                
+                var embed = new EmbedBuilder()
+                    .WithTitle("Dein Level-Fortschritt")
+                    .WithColor(Color.DarkRed)
+                    //.WithImageUrl(command.User.GetAvatarUrl())
+                    
+                    .AddField("Level",$"```{xpResponse.level}```", true)
+                    .AddField("XP",$"```{xpResponse.xp}```",true)
+                    .AddField($"XP bis Level {xpResponse.level+1}" , $"```{xpResponse.xpToNextLevel}```")
+                    .AddField("Dein Platz in Vergleich zu allen",$"```{xpResponse.platzDerPerson}```")
+                    .AddField($"Du bekommst zurzeit", $"```{xpResponse.currentGain} XP / MIN```")
+                    .Build();
+                
+                await command.FollowupAsync(embed: embed, ephemeral: true);
+            } 
         }
     }
 
-    private static Task LogAsync(LogMessage log)
+    private Task LogAsync(LogMessage log)
     {
         Console.WriteLine(log.ToString());
         return Task.CompletedTask;

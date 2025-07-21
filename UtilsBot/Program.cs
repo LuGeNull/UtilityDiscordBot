@@ -1,43 +1,54 @@
-﻿using UtilsBot.Services;
+﻿using UtilsBot.Repository;
+using UtilsBot.Services;
+using Timer = System.Timers.Timer;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using UtilsBot.Datenbank;
-using UtilsBot.Domain;
-using UtilsBot.Domain.Contracts;
-using UtilsBot.Domain.Models;
+using UtilsBot;
 
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureAppConfiguration((context, config) =>
+public class Program
+{
+    private DiscordService _discordService;
+
+    public Program(DiscordService discordService)
     {
-        config.AddJsonFile("settings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"settings.{context.HostingEnvironment.EnvironmentName}.json", optional: true)
-            .AddEnvironmentVariables();
-    })
-    .ConfigureServices((context, services) =>
+        _discordService = discordService;
+    }
+
+    public static Task Main(string[] args)
     {
-        var configuration = context.Configuration;
-        services.Configure<BotConfig>(context.Configuration.GetSection("BotConfig"));
-        var botConfig = context.Configuration.GetSection("BotConfig").Get<BotConfig>();
-        if (botConfig is null)
-        {
-            throw new ArgumentException("No settings.json provided with section BotConfig.");
-        }
+        UeberpruefeBotToken();
+        return new Program(new DiscordService(new DiscordServerChangeMonitor(new DatabaseRepository()), ApplicationState.Token))
+            .MainAsync();
+    }
 
-        var token = botConfig.TestMode ? configuration["DiscordTokenTest"] : configuration["DiscordToken"];
-        if (string.IsNullOrWhiteSpace(token))
-            throw new Exception("DiscordTokenTest or DiscordToken not set");
-
-        services.Configure<Secrets>(options => { options.DiscordToken = token; });
-
-        services.AddScoped<IBotRepository, BotRepository>();
-        services.AddScoped<IDiscordCommandHandler, DiscordCommandHandler>();
-        services.AddScoped<IDomainCommandHandler, DomainCommandHandler>();
+    private static void UeberpruefeBotToken()
+    {
+        ApplicationState.TestToken = Environment.GetEnvironmentVariable("DiscordTokenTest") ?? "";
+        ApplicationState.ProdToken = Environment.GetEnvironmentVariable("DiscordToken") ?? "";
         
-        services.AddSingleton<DiscordService>();
-        services.AddHostedService(provider => provider.GetRequiredService<DiscordService>());
-    })
-    .Build();
+        if (string.IsNullOrEmpty(ApplicationState.TestToken) || string.IsNullOrEmpty(ApplicationState.ProdToken))
+        {
+            if (string.IsNullOrEmpty(ApplicationState.TestToken))
+            {
+                ApplicationState.TestMode = false;
+            }
+            if (string.IsNullOrEmpty(ApplicationState.ProdToken))
+            {
+                ApplicationState.TestMode = true;
+            }
 
+            if (string.IsNullOrEmpty(ApplicationState.TestToken) && string.IsNullOrEmpty(ApplicationState.ProdToken))
+            {
+                throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
+            }
+        }
+        else
+        {
+            ApplicationState.TestMode = true;
+        }
+    }
 
-await host.RunAsync();
+    public async Task MainAsync()
+    {
+        await _discordService.StartWorking();
+    }
+}

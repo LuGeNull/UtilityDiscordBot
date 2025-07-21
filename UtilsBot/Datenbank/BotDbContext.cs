@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using UtilsBot.Domain;
-using UtilsBot.Domain.Models;
 
 namespace UtilsBot.Datenbank;
 
