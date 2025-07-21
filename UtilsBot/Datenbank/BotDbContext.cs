@@ -5,7 +5,7 @@ namespace UtilsBot.Datenbank;
 public class BotDbContext : DbContext
 {
     public DbSet<AllgemeinePerson>  AllgemeinePerson { get; set; }
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AllgemeinePerson>().ToTable("AllgemeinePerson");
