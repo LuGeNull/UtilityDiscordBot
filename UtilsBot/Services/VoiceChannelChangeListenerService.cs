@@ -9,11 +9,13 @@ public class VoiceChannelChangeListenerService
 {
     private Timer _checkTimer;
     public DatabaseRepository _database;
+    public IEnumerable<Guild> _guilds;
 
     public VoiceChannelChangeListenerService(DatabaseRepository database)
     {
         _database = database;
         _checkTimer = new Timer();
+        _guilds = new List<Guild>();
     }
 
     public Task CheckServerChangesAsync(DiscordSocketClient _client)
