@@ -1,4 +1,3 @@
-using System.Formats.Asn1;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,8 +42,7 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
             {
                 var ZuBenachrichtigendePerson = await repo.PersonenDieBenachrichtigtWerdenWollenAsync(user.Id,
                     user.DisplayName, connectedUsers.Select(cu => cu.Id).ToList());
-                await PersonenBenachrichtigenAsync(ZuBenachrichtigendePerson, client, user.DisplayName,
-                    channel.Guild.Name);
+                await PersonenBenachrichtigenAsync(ZuBenachrichtigendePerson, client, user.DisplayName, channel.Guild.Name);
             }
 
             lokalePerson.ZuletztImChannel = DateTime.Now;

@@ -17,7 +17,7 @@ namespace UtilsBot.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
 
-            modelBuilder.Entity("UtilsBot.Domain.Models.AllgemeinePerson", b =>
+            modelBuilder.Entity("UtilsBot.AllgemeinePerson", b =>
                 {
                     b.Property<ulong>("UserId")
                         .ValueGeneratedOnAdd()
@@ -51,6 +51,44 @@ namespace UtilsBot.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("AllgemeinePerson", (string)null);
+                });
+
+            modelBuilder.Entity("UtilsBot.BenachrichtigungEingegangen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong?>("AllgemeinePersonUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("EingegangenVonDisplayName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong>("EingegangenVonUserID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("EingegangenZeitpunkt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AllgemeinePersonUserId");
+
+                    b.ToTable("BenachrichtigungEingegangen");
+                });
+
+            modelBuilder.Entity("UtilsBot.BenachrichtigungEingegangen", b =>
+                {
+                    b.HasOne("UtilsBot.AllgemeinePerson", null)
+                        .WithMany("BenachrichtigungEingegangen")
+                        .HasForeignKey("AllgemeinePersonUserId");
+                });
+
+            modelBuilder.Entity("UtilsBot.AllgemeinePerson", b =>
+                {
+                    b.Navigation("BenachrichtigungEingegangen");
                 });
 #pragma warning restore 612, 618
         }

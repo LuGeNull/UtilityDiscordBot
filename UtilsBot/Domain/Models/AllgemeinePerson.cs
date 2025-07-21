@@ -12,6 +12,7 @@ public class AllgemeinePerson
     public long Xp { get; set; }
     public long BekommtZurzeitSoVielXp { get; set; }
     public DateTime ZuletztImChannel { get; set; }
+    public List<BenachrichtigungEingegangen> BenachrichtigungEingegangen { get; set; }
 
   
     public long BenachrichtigenZeitVon { get; set; }
@@ -26,53 +27,57 @@ public class AllgemeinePerson
         this.UserId = userId;
         DisplayName = displayName;
         GuildId = guildId;
+        if (BenachrichtigungEingegangen == null)
+        {
+            BenachrichtigungEingegangen = new List<BenachrichtigungEingegangen>();
+        }
     }
    
     public bool KannUndWilldiePersonBenachrichtigtWerden(ulong userIdDerBenachrichtigendenPerson, string displayNameDerBenachrichtigendenPerson)
     {
-        //if (WillBenachrichtigungenBekommen)
-        //{
-        //    var datumJetzt = DateTime.Now;
-        //    var untereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0);
-        //    var obereSchranke = DateTime.Now;
-        //    if (BenachrichtigenZeitBis < BenachrichtigenZeitVon)
-        //    {
-        //        untereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0).AddDays(-1);
-        //        obereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitBis.ToString()), 0, 0);
-        //    }
-        //    if (BenachrichtigenZeitBis == 24 || BenachrichtigenZeitBis == 0)
-        //    {
-        //        obereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,23, 59, 59);
-        //        
-        //    }
-        //    else
-        //    {
-        //        obereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,int.Parse(BenachrichtigenZeitBis.ToString()), 0, 0);
-        //    }
-        //    
-        //    if (datumJetzt > untereSchranke && datumJetzt < obereSchranke)
-        //    {
-        //        var aktuelleBenachrichtigungen = BenachrichtigungEingegangen.FirstOrDefault(b => b.VersendetVon == userIdDerBenachrichtigendenPerson);
-        //        
-        //        if (aktuelleBenachrichtigungen == null || aktuelleBenachrichtigungen.AbsendeZeitpunkt.AddMinutes(90) < DateTime.Now)
-        //        {
-        //            BenachrichtigungEingegangen.Remove(aktuelleBenachrichtigungen);
-        //        }
-        //        else
-        //        {
-        //            return false;
-        //        }
-        //        
-        //       // BenachrichtigungEingegangen.Add(new BenachrichtigungEingegangen
-        //       // {
-        //       //     VersendetVon = userIdDerBenachrichtigendenPerson,
-        //       //     EingegangenVonDisplayName = displayNameDerBenachrichtigendenPerson,
-        //       //     AbsendeZeitpunkt = DateTime.Now
-        //       // });
-        //        return true;
-        //    }
-        //    
-        //}
+        if (WillBenachrichtigungenBekommen)
+        {
+            var datumJetzt = DateTime.Now;
+            var untereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0);
+            var obereSchranke = DateTime.Now;
+            if (BenachrichtigenZeitBis < BenachrichtigenZeitVon)
+            {
+                untereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitVon.ToString()), 0, 0).AddDays(-1);
+                obereSchranke = new DateTime(datumJetzt.Year, datumJetzt.Month, datumJetzt.Day, int.Parse(BenachrichtigenZeitBis.ToString()), 0, 0);
+            }
+            if (BenachrichtigenZeitBis == 24 || BenachrichtigenZeitBis == 0)
+            {
+                obereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,23, 59, 59);
+                
+            }
+            else
+            {
+                obereSchranke = new DateTime(datumJetzt.Year,datumJetzt.Month,datumJetzt.Day,int.Parse(BenachrichtigenZeitBis.ToString()), 0, 0);
+            }
+            
+            if (datumJetzt > untereSchranke && datumJetzt < obereSchranke)
+            {
+                var aktuelleBenachrichtigungen = BenachrichtigungEingegangen.FirstOrDefault(b => b.EingegangenVonUserID == userIdDerBenachrichtigendenPerson);
+                
+                if (aktuelleBenachrichtigungen == null || aktuelleBenachrichtigungen.EingegangenZeitpunkt.AddMinutes(90) < DateTime.Now)
+                {
+                    BenachrichtigungEingegangen.Remove(aktuelleBenachrichtigungen);
+                }
+                else
+                {
+                    return false;
+                }
+                
+                BenachrichtigungEingegangen.Add(new BenachrichtigungEingegangen
+                {
+                    EingegangenVonUserID = userIdDerBenachrichtigendenPerson,
+                    EingegangenVonDisplayName = displayNameDerBenachrichtigendenPerson,
+                    EingegangenZeitpunkt = DateTime.Now
+                });
+                return true;
+            }
+            
+        }
         return false;
     }
     public override bool Equals(object obj)
