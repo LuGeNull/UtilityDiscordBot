@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
 
-namespace UtilsBot.Domain.Models;
+namespace UtilsBot;
 
 public class BenachrichtigungEingegangen
 {

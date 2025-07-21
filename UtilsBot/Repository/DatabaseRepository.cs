@@ -1,26 +1,28 @@
-using Microsoft.EntityFrameworkCore;
-using UtilsBot.Domain.Contracts;
-using UtilsBot.Domain.Models;
+using UtilsBot.Datenbank;
 
-namespace UtilsBot.Datenbank;
+namespace UtilsBot.Repository;
 
-public class BotRepository : IBotRepository
+public class DatabaseRepository
 {
-    private readonly BotDbContext _db = new();
+    public BotDbContext _db;
+
+    public DatabaseRepository()
+    {
+        _db = new BotDbContext();
+    }
 
     public void SaveChanges()
     {
         _db.SaveChanges();
     }
-
-    public async Task DebugInfoAsync()
+    public void DebugInfo()
     {
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
         Console.WriteLine("\n");
-        foreach (var person in await _db.AllgemeinePerson.ToListAsync())
+        foreach (var person in _db.AllgemeinePerson)
             Console.WriteLine(
                 $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, WillBenachrichtigtWerden: {person.WillBenachrichtigungenBekommen}, Von: {person.BenachrichtigenZeitVon}, Bis: {person.BenachrichtigenZeitBis} , Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
     }
@@ -35,6 +37,7 @@ public class BotRepository : IBotRepository
             person.WillBenachrichtigungenBekommen = willBenachrichtigtWerden;
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
+           
         }
         else
         {
@@ -43,8 +46,8 @@ public class BotRepository : IBotRepository
             person.BenachrichtigenZeitVon = von;
             person.BenachrichtigenZeitBis = bis;
             _db.AllgemeinePerson.Add(person);
+            
         }
-
         _db.SaveChanges();
     }
 
@@ -66,7 +69,7 @@ public class BotRepository : IBotRepository
     }
 
 
-    private List<ulong> AlleIdsPersonen()
+    public List<ulong> AlleIdsPersonen()
     {
         return _db.AllgemeinePerson.Select(p => p.UserId).ToList();
     }

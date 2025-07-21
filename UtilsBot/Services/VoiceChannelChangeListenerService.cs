@@ -1,46 +1,43 @@
 using Discord;
 using Discord.WebSocket;
-using Microsoft.Extensions.DependencyInjection;
-using UtilsBot.Domain.Contracts;
-using UtilsBot.Domain.Models;
+using UtilsBot.Repository;
 using Timer = System.Timers.Timer;
 
 namespace UtilsBot.Services;
 
-public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory, BotConfig config) : IDisposable // What the flip?
+public class VoiceChannelChangeListenerService
 {
-    private Timer _checkTimer = new();
+    private Timer _checkTimer;
+    public DatabaseRepository _database;
 
-    private async Task WithRepositoryAsync(Func<IBotRepository, Task> action)
+    public VoiceChannelChangeListenerService(DatabaseRepository database)
     {
-        using var scope = scopeFactory.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IBotRepository>();
-        await action(repository);
+        _database = database;
+        _checkTimer = new Timer();
     }
 
-    private async Task CheckServerChangesAsync(DiscordSocketClient client)
+    public Task CheckServerChangesAsync(DiscordSocketClient _client)
     {
-        await WithRepositoryAsync(async repo =>
+        _database.DebugInfo();
+        foreach (var guild in _client.Guilds)
+        foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
         {
-            await repo.DebugInfoAsync();
-            foreach (var guild in client.Guilds)
-            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
-            {
-                NeueUserHinzufuegenFallsVorhanden(repo, channel);
-                UpdateInfoUser(repo, channel, client);
-            }
-        });
+            NeueUserHinzufuegenFallsVorhanden(channel, _client);
+            UpdateInfoUser(channel, _client);
+        }
+        
+        return Task.CompletedTask;
     }
 
-    private void UpdateInfoUser(IBotRepository repo, SocketVoiceChannel channel, DiscordSocketClient client)
+    public void UpdateInfoUser(SocketVoiceChannel channel, DiscordSocketClient client)
     {
         var connectedUsers = channel.ConnectedUsers;
         foreach (var user in connectedUsers)
         {
-            var lokalePerson = repo.HoleAllgemeinePersonMitId(user.Id);
+            var lokalePerson = _database.HoleAllgemeinePersonMitId(user.Id);
             if (SollFuerDiePersonEineBenachrichtigungVerschicktWerden(lokalePerson))
             {
-                var ZuBenachrichtigendePerson = repo.PersonenDieBenachrichtigtWerdenWollen(user.Id,
+                var ZuBenachrichtigendePerson = _database.PersonenDieBenachrichtigtWerdenWollen(user.Id,
                     user.DisplayName, connectedUsers.Select(cu => cu.Id).ToList());
                 PersonenBenachrichtigen(ZuBenachrichtigendePerson, client, user.DisplayName, channel.Guild.Name);
             }
@@ -48,8 +45,7 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
             lokalePerson.ZuletztImChannel = DateTime.Now;
             UpdateExp(lokalePerson, user);
         }
-
-        repo.SaveChanges();
+        _database.SaveChanges();
     }
 
     private async Task PersonenBenachrichtigen(List<AllgemeinePerson> zuBenachrichtigendePersonen,
@@ -58,7 +54,7 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
         foreach (var zuBenachrichtigendePerson in zuBenachrichtigendePersonen)
         {
             var user = await client.GetUserAsync(zuBenachrichtigendePerson.UserId);
-            if (config.NachrichtenVerschicken)
+            if (ApplicationState.NachrichtenVerschicken)
             {
                 var sendTask =
                     await user.SendMessageAsync($"Auf dem Server {guildName} ist {userDisplayName} beigetreten!");
@@ -66,25 +62,25 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
             }
             else
             {
-                Console.WriteLine(
-                    $"Jetzt wäre eine Nachricht verschickt worden an {user.Username} über {userDisplayName} auf dem Server {guildName}");
+                Console.WriteLine($"Jetzt wäre eine Nachricht verschickt worden an {user.Username} über {userDisplayName} auf dem Server {guildName}");
             }
+       
         }
     }
 
-    private void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
+    private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
     {
         _ = Task.Run(async () =>
         {
-            await Task.Delay(TimeSpan.FromMinutes(config.NachrichtenWerdenGelöschtNachXMinuten));
+            await Task.Delay(TimeSpan.FromMinutes(ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten));
             await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
         });
     }
 
     private bool SollFuerDiePersonEineBenachrichtigungVerschicktWerden(AllgemeinePerson? lokalePerson)
     {
-        if (config.TestMode) return true;
-        if (lokalePerson.ZuletztImChannel.AddMinutes(config.UserXMinutenAusDemChannel) <
+        if (ApplicationState.TestMode) return true;
+        if (lokalePerson.ZuletztImChannel.AddMinutes(ApplicationState.UserXMinutenAusDemChannel) <
             DateTime.Now) return true;
         return false;
     }
@@ -93,45 +89,44 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
     {
         if (UserIsStreamingAndVideoingAndNotMutedAndDeafended(user))
         {
-            var xpToGain = config.BaseXp + config.StreamAndVideoBonus;
+            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
             lokalePerson.Xp += xpToGain;
             lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-            Console.WriteLine(
-                $"{lokalePerson.DisplayName} hat {config.BaseXp + config.StreamOrVideoBonus} XP bekommen");
+            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
-
+        
         if (UserIsStreamingOrVideoingAndNotMutedOrDeafened(user))
         {
-            var xpToGain = config.BaseXp + config.StreamOrVideoBonus;
+            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus;
             lokalePerson.Xp += xpToGain;
             lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-            Console.WriteLine(
-                $"{lokalePerson.DisplayName} hat {config.BaseXp + config.StreamOrVideoBonus} XP bekommen");
+            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         else
         {
             if (UserIsFullMute(user))
             {
-                var xpToGain = config.FullMuteBaseXp;
+                var xpToGain = ApplicationState.FullMuteBaseXp;
                 lokalePerson.Xp += xpToGain;
                 lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat {config.FullMuteBaseXp} XP bekommen");
+                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
             }
             else if (MutedNotDeafened(user))
             {
-                var xpToGain = config.OnlyMuteBaseXp;
+                var xpToGain = ApplicationState.OnlyMuteBaseXp;
                 lokalePerson.Xp += xpToGain;
                 lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat {config.OnlyMuteBaseXp} XP bekommen");
+                Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
             }
             else
             {
-                var xpToGain = config.BaseXp;
+                var xpToGain = ApplicationState.BaseXp;
                 lokalePerson.Xp += xpToGain;
                 lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat {config.BaseXp} XP bekommen");
+                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
             }
         }
+       
     }
 
     private static bool MutedNotDeafened(SocketGuildUser user)
@@ -154,29 +149,31 @@ public class VoiceChannelChangeListenerService(IServiceScopeFactory scopeFactory
         return user.IsStreaming && user.IsVideoing && !user.IsSelfMuted && !user.IsSelfDeafened;
     }
 
-    private void NeueUserHinzufuegenFallsVorhanden(IBotRepository repo, SocketVoiceChannel channel)
+    private void NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
     {
         var neueUser = channel.ConnectedUsers.Select(c => c.Id)
-            .Except(repo.HoleAllgemeinePersonenIdsMitGuildId(channel.Guild.Id));
+            .Except(_database.HoleAllgemeinePersonenIdsMitGuildId(channel.Guild.Id));
         if (neueUser.Any())
             foreach (var user in neueUser)
             {
                 var userInQuestion = channel.ConnectedUsers.First(u => u.Id == user);
-                repo.AddUser(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                _database.AddUser(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
             }
     }
 
-    public async Task StartPeriodicCheck(DiscordSocketClient client)
+    public void StartPeriodicCheck(DiscordSocketClient client)
     {
-        await CheckServerChangesAsync(client);
-        _checkTimer = new Timer(config.TickProXSekunden);
-        _checkTimer.Elapsed += async (_, _) => await CheckServerChangesAsync(client);
+        CheckServerChangesAsync(client);
+        _checkTimer = new Timer(ApplicationState.TickProXSekunden);
+        _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
         _checkTimer.AutoReset = true;
         _checkTimer.Start();
     }
 
-    public void Dispose()
+
+    public void AddUserToInterestedPeopleList(ulong guildUserId, string guildUserDisplayName, ulong guildId, long von,
+        long bis)
     {
-        _checkTimer.Dispose();
+        _database.AddUserToInterestedList(guildUserId, guildUserDisplayName, guildId, von, bis);
     }
 }
