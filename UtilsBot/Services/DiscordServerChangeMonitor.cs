@@ -93,6 +93,7 @@ public class DiscordServerChangeMonitor
                 Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
             }
         }
+        _database.SaveChanges();
        
     }
 
