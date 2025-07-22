@@ -42,15 +42,6 @@ public class DiscordServerChangeMonitor
         _database.SaveChanges();
     }
 
-    private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
-    {
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(TimeSpan.FromMinutes(ApplicationState.NachrichtenWerdenGeloeschtNachXMinuten));
-            await sendTask.Channel.DeleteMessageAsync(sendTask.Id);
-        });
-    }
-
     private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
     {
         
