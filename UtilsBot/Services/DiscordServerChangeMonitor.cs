@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using UtilsBot.Datenbank;
 using UtilsBot.Repository;
 using Timer = System.Timers.Timer;
 
@@ -17,75 +18,79 @@ public class DiscordServerChangeMonitor
         _checkTimer = new Timer();
     }
 
-    public Task CheckServerChangesAsync(DiscordSocketClient _client)
+    public async Task CheckServerChangesAsync(DiscordSocketClient _client)
     {
         _database.DebugInfo();
         foreach (var guild in _client.Guilds)
         foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
         {
             NeueUserHinzufuegenFallsVorhanden(channel, _client);
-            UpdateInfoUser(channel, _client);
+            await UpdateInfoUser(channel, _client);
         }
-        
-        return Task.CompletedTask;
     }
 
-    public void UpdateInfoUser(SocketVoiceChannel channel, DiscordSocketClient client)
+    public async Task UpdateInfoUser(SocketVoiceChannel channel, DiscordSocketClient client)
     {
         var connectedUsers = channel.ConnectedUsers;
-        foreach (var user in connectedUsers)
+        using (var context = new BotDbContext())
         {
-            var lokalePerson = _database.HoleAllgemeinePersonMitId(user.Id);
-            lokalePerson.ZuletztImChannel = DateTime.Now;
-            UpdateExp(lokalePerson, user);
+            foreach (var user in connectedUsers)
+            {
+                var lokalePerson = await _database.HoleAllgemeinePersonMitIdAsync(user.Id, context);
+                if (lokalePerson != null)
+                {
+                    lokalePerson.ZuletztImChannel = DateTime.Now;
+                    var xpToGain = GetXpToGain(user);
+                    lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+                    lokalePerson.Xp += xpToGain;
+                    Console.WriteLine($"{lokalePerson.DisplayName} hat {xpToGain} XP bekommen");
+                }
+            }
+            await _database.SaveChanges(context);
         }
-        _database.SaveChanges();
     }
 
-    private void UpdateExp(AllgemeinePerson lokalePerson, SocketGuildUser user)
+    private int GetXpToGain(SocketGuildUser user)
     {
-        
         if (UserIsStreamingAndVideoingAndNotMutedAndDeafended(user))
         {
-            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
-            lokalePerson.Xp += xpToGain;
-            lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
+            return ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
+            //lokalePerson.Xp += xpToGain;
+            //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+            //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         
         if (UserIsStreamingOrVideoingAndNotMutedOrDeafened(user))
         {
-            var xpToGain = ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus;
-            lokalePerson.Xp += xpToGain;
-            lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-            Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
+            return ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus;
+           // lokalePerson.Xp += xpToGain;
+           // lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+           // Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         else
         {
             if (UserIsFullMute(user))
             {
-                var xpToGain = ApplicationState.FullMuteBaseXp;
-                lokalePerson.Xp += xpToGain;
-                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
+                return ApplicationState.FullMuteBaseXp;
+                //lokalePerson.Xp += xpToGain;
+                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+                //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
             }
             else if (MutedNotDeafened(user))
             {
-                var xpToGain = ApplicationState.OnlyMuteBaseXp;
-                lokalePerson.Xp += xpToGain;
-                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
+                return ApplicationState.OnlyMuteBaseXp;
+                //lokalePerson.Xp += xpToGain;
+                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+                //Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
             }
             else
             {
-                var xpToGain = ApplicationState.BaseXp;
-                lokalePerson.Xp += xpToGain;
-                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
+                return ApplicationState.BaseXp;
+                //lokalePerson.Xp += xpToGain;
+                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+                //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
             }
         }
-        _database.SaveChanges();
-       
     }
 
     private static bool MutedNotDeafened(SocketGuildUser user)
@@ -108,21 +113,21 @@ public class DiscordServerChangeMonitor
         return user.IsStreaming && user.IsVideoing && !user.IsSelfMuted && !user.IsSelfDeafened;
     }
 
-    private void NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
+    private async Task NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
     {
         var neueUser = channel.ConnectedUsers.Select(c => c.Id)
-            .Except(_database.HoleAllgemeinePersonenIdsMitGuildId(channel.Guild.Id));
+            .Except(await _database.HoleAllgemeinePersonenIdsMitGuildIdAsync(channel.Guild.Id));
         if (neueUser.Any())
             foreach (var user in neueUser)
             {
                 var userInQuestion = channel.ConnectedUsers.First(u => u.Id == user);
-                _database.AddUser(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                await _database.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
             }
     }
 
-    public void StartPeriodicCheck(DiscordSocketClient client)
+    public async Task StartPeriodicCheck(DiscordSocketClient client)
     {
-        CheckServerChangesAsync(client);
+        await CheckServerChangesAsync(client);
         _checkTimer = new Timer(ApplicationState.TickProXSekunden);
         _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
         _checkTimer.AutoReset = true;

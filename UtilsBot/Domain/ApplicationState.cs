@@ -19,4 +19,9 @@ public static class ApplicationState
 
     public static int FullMuteBaseXp => 2;
     public static int OnlyMuteBaseXp => 3;
+    public static int NormalMessageXpGain => 10;
+    public static int PictureMessageXpGain => 20;
+    public static int LinkMessageXpGain => 15;
+    public static int VideoMessageXpGain => 25;
+    public static int GifMessageXpGain => 15;
 }

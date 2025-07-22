@@ -34,23 +34,22 @@ public class DiscordService
         await Task.Delay(-1);
     }
 
-    private Task ReadyAsync()
+    private async Task ReadyAsync()
     {
         Console.WriteLine($"Online as: {_client.CurrentUser}");
         
         _client.MessageReceived += async (message) =>
         {
             if (message.Author.IsBot) return;
-            _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message));
+            await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message));
             Console.WriteLine($"Nachricht von {message.Author.Username}: {message.Content}");
         };
         
         _client.SlashCommandExecuted += SlashCommandHandlerAsync;
 
         RegistriereCommands(_client);
-        _discordServerChangeListener.StartPeriodicCheck(_client);
+        await _discordServerChangeListener.StartPeriodicCheck(_client);
         
-        return Task.CompletedTask;
     }
 
     private async void RegistriereCommands(DiscordSocketClient client)
@@ -111,7 +110,7 @@ public class DiscordService
         if (command.User is SocketGuildUser guildUser)
         {
             await command.DeferAsync(ephemeral: invisibleMessage);
-            var leaderboardResponse = _levelService.HandleRequest(new XpLeaderboardRequest(guildUser.Guild.Id));
+            var leaderboardResponse = await _levelService.HandleRequest(new XpLeaderboardRequest(guildUser.Guild.Id));
                 
             var embedBuilder = new EmbedBuilder()
                 .WithTitle("XP Leaderboard")
@@ -131,7 +130,7 @@ public class DiscordService
             var followupMessage = await command.FollowupAsync(embed: embed, ephemeral: invisibleMessage);
             if (!invisibleMessage)
             {
-                NachrichtenLöschenNachXMinuten(followupMessage);
+                NachrichtenLoeschenNachXMinuten(followupMessage);
             }
         }
     }
@@ -141,14 +140,14 @@ public class DiscordService
         if (command.User is SocketGuildUser guildUser)
         {
             await command.DeferAsync(ephemeral: invisibleMessage);
-            var xpResponse = _levelService.HandleRequest(new XpRequest(guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id));
+            var xpResponse = await _levelService.HandleRequest(new XpRequest(guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id));
                 
             var embed = XpEmbed(xpResponse);
                 
             var followupMessage = await command.FollowupAsync(embed: embed, ephemeral: invisibleMessage);
             if (!invisibleMessage)
             {
-                NachrichtenLöschenNachXMinuten(followupMessage);
+                NachrichtenLoeschenNachXMinuten(followupMessage);
             }
         }
     }
@@ -167,7 +166,7 @@ public class DiscordService
             .Build();
     }
 
-    private static void NachrichtenLöschenNachXMinuten(IUserMessage sendTask)
+    private static void NachrichtenLoeschenNachXMinuten(IUserMessage sendTask)
     {
         _ = Task.Run(async () =>
         {
