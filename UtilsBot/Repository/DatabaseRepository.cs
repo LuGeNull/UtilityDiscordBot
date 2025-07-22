@@ -1,73 +1,68 @@
 using UtilsBot.Datenbank;
-
+using Microsoft.EntityFrameworkCore;
 namespace UtilsBot.Repository;
 
 public class DatabaseRepository
 {
-    public BotDbContext _db;
-
-    public DatabaseRepository()
+    public async Task SaveChanges(BotDbContext context)
     {
-        _db = new BotDbContext();
+        await context.SaveChangesAsync();
     }
 
-    public void SaveChanges()
-    {
-        _db.SaveChanges();
-    }
     public void DebugInfo()
     {
-        foreach (var person in _db.AllgemeinePerson)
+        var context = new BotDbContext();
+        foreach (var person in context.AllgemeinePerson)
         {
             Console.WriteLine("\n");
             Console.WriteLine(
                 $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
-
         }
     }
 
-    public void AddUser(ulong guildUserId, string guildUserDisplayName, ulong guildId)
+    public async Task AddUserAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
-        var user = new AllgemeinePerson();
-        user.UserId = guildUserId;
-        user.DisplayName = guildUserDisplayName;
-        user.GuildId = guildId;
-        _db.AllgemeinePerson.Add(user);
-        _db.SaveChanges();
+        using var context = new BotDbContext();
+        var user = new AllgemeinePerson
+        {
+            UserId = guildUserId,
+            DisplayName = guildUserDisplayName,
+            GuildId = guildId
+        };
+        context.AllgemeinePerson.Add(user);
+        await context.SaveChangesAsync();
     }
 
-    public List<ulong> AlleIdsPersonen()
+    public async Task<AllgemeinePerson?> HoleAllgemeinePersonMitIdAsync(ulong userId, BotDbContext context)
     {
-        return _db.AllgemeinePerson.Select(p => p.UserId).ToList();
+        return await context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
-    public AllgemeinePerson? HoleAllgemeinePersonMitId(ulong userId)
+    public async Task<List<ulong>> HoleAllgemeinePersonenIdsMitGuildIdAsync(ulong guildId)
     {
-        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId);
+        using var context = new BotDbContext();
+        return await context.AllgemeinePerson
+            .Where(p => p.GuildId == guildId)
+            .Select(p => p.UserId)
+            .ToListAsync();
     }
 
-    public List<AllgemeinePerson?> HoleAllgemeinePersonenMitGuildId(ulong guildId)
+    public async Task<long> HolePlatzDesUsersBeiXpAsync(ulong guildUserId)
     {
-        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).ToList();
+        using var context = new BotDbContext();
+        var user = await context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == guildUserId);
+        if (user == null) return -1;
+        return await context.AllgemeinePerson
+            .CountAsync(p => p.Xp > user.Xp && p.GuildId == user.GuildId) + 1;
     }
 
-    public List<ulong> HoleAllgemeinePersonenIdsMitGuildId(ulong guildId)
+    public async Task<List<AllgemeinePerson>> HoleTop8PersonenNachXpAsync(ulong requestGuildId)
     {
-        return _db.AllgemeinePerson.Where(p => p.GuildId == guildId).Select(p => p.UserId).ToList();
-    }
-
-    public AllgemeinePerson HoleUserMitId(ulong guildUserId)
-    {
-        return _db.AllgemeinePerson.FirstOrDefault(p => p.UserId == guildUserId);
-    }
-
-    public long HolePlatzDesUsersBeiXp(ulong guildUserId)
-    {
-        return _db.AllgemeinePerson.OrderByDescending(p => p.Xp).ToList().FindIndex(p => p.UserId == guildUserId) + 1;
-    }
-
-    public List<AllgemeinePerson> HoleTop8PersonenNachXp(ulong requestGuildId)
-    {
-        return _db.AllgemeinePerson.Where(p => p.GuildId == requestGuildId).OrderByDescending(p => p.Xp).Take(8).ToList();
+        using var context = new BotDbContext();
+        return await context.AllgemeinePerson
+            .Where(p => p.GuildId == requestGuildId)
+            .OrderByDescending(p => p.Xp)
+            .Take(8)
+            .ToListAsync();
     }
 }
