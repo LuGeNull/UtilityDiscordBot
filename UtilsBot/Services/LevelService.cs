@@ -10,6 +10,15 @@ public class LevelService
 {
     DatabaseRepository _db = new DatabaseRepository();
 
+    public XpLeaderboardResponse HandleRequest(XpLeaderboardRequest request)
+    {
+        var personen = _db.HoleTop10PersonenNachXp(request.guildId);
+        return new XpLeaderboardResponse()
+        {
+            personen = personen,
+        };
+
+    }
     public void HandleRequest(MessageSentRequest request)
     {
         var person = _db.HoleAllgemeinePersonMitId(request.userId);
@@ -20,7 +29,7 @@ public class LevelService
             person.XpTodayByMessages = 0;
             person.LastXpGainDate = DateTime.Today;
         }
-        int xpAvailable = 500 - person.XpTodayByMessages;
+        int xpAvailable = ApplicationState.NachrichtenpunkteTaeglich - person.XpTodayByMessages;
         int xpGranted = Math.Min(xpToAdd, xpAvailable);
         
         if (xpGranted > 0)
@@ -107,6 +116,7 @@ public class LevelService
         return false;
     }
 
+    
     public XpResponse HandleRequest(XpRequest request)
     {
         var person = _db.HoleAllgemeinePersonMitId(request.userId);
@@ -134,9 +144,25 @@ public class LevelService
 
         long xpToNextLevel = xpForNextLevel - restXp;
         
-        return new XpResponse(level, person.Xp, xpToNextLevel, platzDerPerson, currentGain);
+        return new XpResponse(level, person.Xp, xpToNextLevel, platzDerPerson, currentGain, person.XpTodayByMessages);
     }
 
+    public int BerechneLevelUndRestXp(long xp)
+    {
+        int level = 1;
+        long xpForNextLevel = ApplicationState.StartXp;
+        long restXp = xp;
+
+        while (restXp >= xpForNextLevel)
+        {
+            restXp -= xpForNextLevel;
+            level++;
+            xpForNextLevel = (int)Math.Round(xpForNextLevel * ApplicationState.XpFaktorErhoehung);
+        }
+        
+        return level;
+    }
+    
     private AllgemeinePerson? WennPersonNichtExistiertDannErstellen(XpRequest request, AllgemeinePerson? person)
     {
         if (person == null)

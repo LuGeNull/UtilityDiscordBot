@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  utilitydiscordbot:
+    build: .
+    image: utilitydiscordbot
+    env_file:
+      - .env
+    volumes:
+      - /root/Data:/app/Data
+    restart: unless-stopped

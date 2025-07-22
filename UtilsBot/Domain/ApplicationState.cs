@@ -9,12 +9,10 @@ public static class ApplicationState
     public static double XpFaktorErhoehung => 1.3;
     public static string ProdToken { get; set; }
     public static bool KommandosAktiviert => true;
-    public static int NachrichtenWerdenGeloeschtNachXMinuten { get; set; }
+    public static int NachrichtenWerdenGeloeschtNachXMinuten => 5;
+    public static int NachrichtenpunkteTaeglich => 500;
     public static int TickProXSekunden => 60000;
-    
-    public static bool NachrichtenVerschicken = false;
     public static int BaseXp => 4;
-    public static int UserXMinutenAusDemChannel => 1;
     public static int StreamAndVideoBonus => 4;
     public static int StreamOrVideoBonus => 2;
     public static int VideoOnlyBonus => 2;
