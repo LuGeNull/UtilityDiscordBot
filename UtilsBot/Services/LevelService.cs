@@ -12,7 +12,7 @@ public class LevelService
 
     public XpLeaderboardResponse HandleRequest(XpLeaderboardRequest request)
     {
-        var personen = _db.HoleTop10PersonenNachXp(request.guildId);
+        var personen = _db.HoleTop8PersonenNachXp(request.guildId);
         return new XpLeaderboardResponse()
         {
             personen = personen,

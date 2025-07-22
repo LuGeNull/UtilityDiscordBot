@@ -69,12 +69,12 @@ public class DiscordService
             
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
                 .WithName("leaderboardxp")
-                .WithDescription("Auskunft über den Fortschritt der Top 10")
+                .WithDescription("Auskunft über die XP der Top 8")
                 .Build(), guildId);
             
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
                 .WithName("leaderboardxptransparent")
-                .WithDescription("Auskunft über den Fortschritt der Top 10 für alle einsehbar")
+                .WithDescription("Auskunft über die XP der Top 8 für alle einsehbar")
                 .Build(), guildId);
         }
     }

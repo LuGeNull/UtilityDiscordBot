@@ -66,8 +66,8 @@ public class DatabaseRepository
         return _db.AllgemeinePerson.OrderByDescending(p => p.Xp).ToList().FindIndex(p => p.UserId == guildUserId) + 1;
     }
 
-    public List<AllgemeinePerson> HoleTop10PersonenNachXp(ulong requestGuildId)
+    public List<AllgemeinePerson> HoleTop8PersonenNachXp(ulong requestGuildId)
     {
-        return _db.AllgemeinePerson.Where(p => p.GuildId == requestGuildId).OrderByDescending(p => p.Xp).Take(10).ToList();
+        return _db.AllgemeinePerson.Where(p => p.GuildId == requestGuildId).OrderByDescending(p => p.Xp).Take(8).ToList();
     }
 }
