@@ -5,6 +5,7 @@ using Timer = System.Timers.Timer;
 using Microsoft.Extensions.Configuration;
 using UtilsBot;
 using UtilsBot.Datenbank;
+using UtilsBot.Domain;
 
 public class Program
 {
@@ -19,7 +20,7 @@ public class Program
     {
         DatabaseMigration();
         UeberpruefeBotToken();
-        return new Program(new DiscordService(new DiscordServerChangeMonitor(new DatabaseRepository()), ApplicationState.Token))
+        return new Program(new DiscordService(new DiscordServerChangeMonitor(), ApplicationState.Token, new BetService()))
             .MainAsync();
     }
 

@@ -1,6 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using UtilsBot.Datenbank;
+using UtilsBot.Domain;
 using UtilsBot.Repository;
 using Timer = System.Timers.Timer;
 
@@ -9,45 +10,44 @@ namespace UtilsBot.Services;
 public class DiscordServerChangeMonitor
 {
     private Timer _checkTimer;
-    public DatabaseRepository _database;
-    
 
-    public DiscordServerChangeMonitor(DatabaseRepository database)
+    public DiscordServerChangeMonitor()
     {
-        _database = database;
         _checkTimer = new Timer();
     }
 
-    public async Task CheckServerChangesAsync(DiscordSocketClient _client)
+    private async Task CheckServerChangesAsync(DiscordSocketClient client)
     {
-        _database.DebugInfo();
-        foreach (var guild in _client.Guilds)
-        foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
+        await using var db = new DatabaseRepository(new BotDbContext());
+        db.DebugInfo();
+        foreach (var guild in client.Guilds)
         {
-            NeueUserHinzufuegenFallsVorhanden(channel, _client);
-            await UpdateInfoUser(channel, _client);
+            // Es müssen mindestens 2 Personen im Voice Channel sein
+            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 1))
+            {
+                await NeueUserHinzufuegenFallsVorhanden(channel, db);
+                await UpdateInfoUser(channel, db);
+            }
         }
     }
 
-    public async Task UpdateInfoUser(SocketVoiceChannel channel, DiscordSocketClient client)
+    private async Task UpdateInfoUser(SocketVoiceChannel channel, DatabaseRepository db)
     {
         var connectedUsers = channel.ConnectedUsers;
-        using (var context = new BotDbContext())
+        foreach (var user in connectedUsers)
         {
-            foreach (var user in connectedUsers)
+            var lokalePerson = await db.HoleAllgemeinePersonMitIdAsync(user.Id);
+            if (lokalePerson != null)
             {
-                var lokalePerson = await _database.HoleAllgemeinePersonMitIdAsync(user.Id, context);
-                if (lokalePerson != null)
-                {
-                    lokalePerson.ZuletztImChannel = DateTime.Now;
-                    var xpToGain = GetXpToGain(user);
-                    lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                    lokalePerson.Xp += xpToGain;
-                    Console.WriteLine($"{lokalePerson.DisplayName} hat {xpToGain} XP bekommen");
-                }
+                lokalePerson.ZuletztImChannel = DateTime.Now;
+                var xpToGain = GetXpToGain(user);
+                lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
+                lokalePerson.Xp += xpToGain;
+                Console.WriteLine($"{lokalePerson.DisplayName} hat {xpToGain} XP bekommen");
+
             }
-            await _database.SaveChanges(context);
         }
+        await db.SaveChangesAsync();
     }
 
     private int GetXpToGain(SocketGuildUser user)
@@ -113,16 +113,18 @@ public class DiscordServerChangeMonitor
         return user.IsStreaming && user.IsVideoing && !user.IsSelfMuted && !user.IsSelfDeafened;
     }
 
-    private async Task NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DiscordSocketClient client)
+    private async Task NeueUserHinzufuegenFallsVorhanden(SocketVoiceChannel channel, DatabaseRepository db)
     {
         var neueUser = channel.ConnectedUsers.Select(c => c.Id)
-            .Except(await _database.HoleAllgemeinePersonenIdsMitGuildIdAsync(channel.Guild.Id));
+            .Except(await db.HoleAllgemeinePersonenIdsMitGuildIdAsync(channel.Guild.Id)).ToList();
         if (neueUser.Any())
+        {
             foreach (var user in neueUser)
             {
                 var userInQuestion = channel.ConnectedUsers.First(u => u.Id == user);
-                await _database.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                await db.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
             }
+        }
     }
 
     public async Task StartPeriodicCheck(DiscordSocketClient client)

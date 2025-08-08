@@ -1,51 +1,49 @@
 using Discord;
 using Discord.WebSocket;
 using UtilsBot.Datenbank;
+using UtilsBot.Domain;
+using UtilsBot.Domain.MessageSent;
+using UtilsBot.Domain.Xp;
+using UtilsBot.Domain.XpLeaderboard;
 using UtilsBot.Repository;
-using UtilsBot.Request;
-using UtilsBot.Response;
 
 namespace UtilsBot.Services;
 
 public class LevelService
 {
-    DatabaseRepository _db = new DatabaseRepository();
 
-    public async Task<XpLeaderboardResponse> HandleRequest(XpLeaderboardRequest request)
+    public async Task<XpLeaderboardResponse> HandleRequest(XpLeaderboardRequest request, DatabaseRepository db)
     {
-        var personen = await _db.HoleTop8PersonenNachXpAsync(request.guildId);
+        var personen = await db.HoleTop8PersonenNachXpAsync(request.guildId);
         return new XpLeaderboardResponse()
         {
             personen = personen,
         };
 
     }
-    public async Task HandleRequest(MessageSentRequest request)
+    public async Task HandleRequest(MessageSentRequest request, DatabaseRepository db)
     {
-        using (var context = new BotDbContext())
+        var person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
+        if (person == null)
         {
-            var person = await _db.HoleAllgemeinePersonMitIdAsync(request.userId, context);
-            if (person == null)
-            {
-                return;
-            }
-            var xpToAdd = DetermineHowMuchXpToAddFromMessageType(request.message);
+            return;
+        }
+        var xpToAdd = DetermineHowMuchXpToAddFromMessageType(request.message);
 
-            if (person.LastXpGainDate.Date != DateTime.Today)
-            {
-                person.XpTodayByMessages = 0;
-                person.LastXpGainDate = DateTime.Today;
-            }
-            int xpAvailable = ApplicationState.NachrichtenpunkteTaeglich - person.XpTodayByMessages;
-            int xpGranted = Math.Min(xpToAdd, xpAvailable);
+        if (person.LastXpGainDate.Date != DateTime.Today)
+        {
+            person.XpTodayByMessages = 0;
+            person.LastXpGainDate = DateTime.Today;
+        }
+        int xpAvailable = ApplicationState.NachrichtenpunkteTaeglich - person.XpTodayByMessages;
+        int xpGranted = Math.Min(xpToAdd, xpAvailable);
 
-            if (xpGranted > 0)
-            {
-                person.Xp += xpGranted;
-                person.XpTodayByMessages += xpGranted;
-                person.LastXpGainDate = DateTime.Today;
-                await _db.SaveChanges(context);
-            }
+        if (xpGranted > 0)
+        {
+            person.Xp += xpGranted;
+            person.XpTodayByMessages += xpGranted;
+            person.LastXpGainDate = DateTime.Today;
+            await db.SaveChangesAsync();
         }
     }
 
@@ -125,11 +123,10 @@ public class LevelService
     }
 
     
-    public async Task<XpResponse> HandleRequest(XpRequest request)
+    public async Task<XpResponse> HandleRequest(XpRequest request, DatabaseRepository db)
     {
-        var context = new BotDbContext();
-        var person = await _db.HoleAllgemeinePersonMitIdAsync(request.userId, context);
-        person = await WennPersonNichtExistiertDannErstellen(request, person, context);
+        var person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
+        person = await WennPersonNichtExistiertDannErstellen(request, person, db);
         
         long currentGain = person.BekommtZurzeitSoVielXp;
         
@@ -138,7 +135,7 @@ public class LevelService
             currentGain = 0;
         }
                 
-        long platzDerPerson = await _db.HolePlatzDesUsersBeiXpAsync(person.UserId);
+        long platzDerPerson = await db.HolePlatzDesUsersBeiXpAsync(person.UserId);
 
         int level = 1;
         long xpForNextLevel = ApplicationState.StartXp;
@@ -173,12 +170,12 @@ public class LevelService
     }
     
     private async Task<AllgemeinePerson?> WennPersonNichtExistiertDannErstellen(XpRequest request,
-        AllgemeinePerson? person, BotDbContext context)
+        AllgemeinePerson? person, DatabaseRepository db)
     {
         if (person == null)
         {
-            await _db.AddUserAsync(request.userId, request.displayName,request.guildId);
-            person = await _db.HoleAllgemeinePersonMitIdAsync(request.userId, context);
+            await db.AddUserAsync(request.userId, request.displayName,request.guildId);
+            person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
         }
         
         return person;

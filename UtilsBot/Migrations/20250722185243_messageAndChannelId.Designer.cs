@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UtilsBot.Datenbank;
 
@@ -10,14 +11,16 @@ using UtilsBot.Datenbank;
 namespace UtilsBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250722185243_messageAndChannelId")]
+    partial class messageAndChannelId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
 
-            modelBuilder.Entity("UtilsBot.Domain.AllgemeinePerson", b =>
+            modelBuilder.Entity("UtilsBot.AllgemeinePerson", b =>
                 {
                     b.Property<ulong>("UserId")
                         .ValueGeneratedOnAdd()
@@ -50,7 +53,7 @@ namespace UtilsBot.Migrations
                     b.ToTable("AllgemeinePerson", (string)null);
                 });
 
-            modelBuilder.Entity("UtilsBot.Domain.Bet", b =>
+            modelBuilder.Entity("UtilsBot.Bet", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -62,21 +65,7 @@ namespace UtilsBot.Migrations
                     b.Property<DateTime>("EndedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Ereignis1Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Ereignis2Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("MaxPayoutMultiplikator")
-                        .HasColumnType("INTEGER");
-
                     b.Property<ulong>("MessageId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ReferenzId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("StartedAt")
@@ -89,18 +78,12 @@ namespace UtilsBot.Migrations
                     b.Property<ulong>("UserIdStartedBet")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("WetteWurdeAbgebrochen")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("WetteWurdeBeendet")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
 
                     b.ToTable("Bet");
                 });
 
-            modelBuilder.Entity("UtilsBot.Domain.BetPlacements", b =>
+            modelBuilder.Entity("UtilsBot.BetPlacements", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -109,29 +92,25 @@ namespace UtilsBot.Migrations
                     b.Property<Guid>("BetId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<long>("Einsatz")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("Site")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("UserId")
+                    b.Property<ulong>("UserId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BetId");
 
-                    b.ToTable("Placements");
+                    b.ToTable("BetPlacements");
                 });
 
-            modelBuilder.Entity("UtilsBot.Domain.BetPlacements", b =>
+            modelBuilder.Entity("UtilsBot.BetPlacements", b =>
                 {
-                    b.HasOne("UtilsBot.Domain.Bet", "Bet")
+                    b.HasOne("UtilsBot.Bet", "Bet")
                         .WithMany("Placements")
                         .HasForeignKey("BetId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -140,7 +119,7 @@ namespace UtilsBot.Migrations
                     b.Navigation("Bet");
                 });
 
-            modelBuilder.Entity("UtilsBot.Domain.Bet", b =>
+            modelBuilder.Entity("UtilsBot.Bet", b =>
                 {
                     b.Navigation("Placements");
                 });

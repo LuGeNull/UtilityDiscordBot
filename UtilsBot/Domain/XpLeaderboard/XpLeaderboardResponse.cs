@@ -1,4 +1,4 @@
-namespace UtilsBot.Response;
+namespace UtilsBot.Domain.XpLeaderboard;
 
 public class XpLeaderboardResponse
 {

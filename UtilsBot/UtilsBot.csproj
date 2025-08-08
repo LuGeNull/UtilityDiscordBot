@@ -15,7 +15,6 @@
       </PackageReference>
       <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.6" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
-      <PackageReference Include="MSTest.TestFramework" Version="3.9.3" />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,7 +26,6 @@
 
     <ItemGroup>
       <Folder Include="Data\" />
-      <Folder Include="Domain\ValueObjects\" />
     </ItemGroup>
 
     <ItemGroup>
