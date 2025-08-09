@@ -344,7 +344,7 @@ public class DiscordService
                 return;
             }
 
-            //Update message so User gets shown in embed
+            // Update message so User gets shown in embed
             // Hole Channel und Nachricht
             var channel = await _client.GetChannelAsync(modal.Channel.Id) as IMessageChannel;
             if (channel == null)

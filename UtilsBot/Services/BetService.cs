@@ -35,26 +35,26 @@ public class BetService
 
         if (aktiveBet == null)
         {
-            return new BetResponse(false);
+            return new BetResponse(false, anfrageWarErfolgreich : false);
         }
         
         if (aktiveBet.EndedAt < DateTime.Now)
         {
-            return new BetResponse(true, true, true);
+            return new BetResponse(true, true, true, anfrageWarErfolgreich : false);
         }
 
         if (!db.HatDerUserGenugXpFuerAnfrage(request.userId, request.einsatz))
         {
-            return new BetResponse(true, false);
+            return new BetResponse(true, false, anfrageWarErfolgreich : false);
         }
 
         var erfolgreich = await db.AddUserToBet(request.userId, request.einsatz, request.messageId, request.option);
         if (!erfolgreich)
         {
-            return new BetResponse(true, true, false, true);
+            return new BetResponse(true, true, false, true , anfrageWarErfolgreich : false);
         }
 
-        return new BetResponse(true);
+        return new BetResponse(anfrageWarErfolgreich : true);
     }
 
     public async Task<bool> IstWetteGeschlossen(ulong? messageId, DatabaseRepository db)

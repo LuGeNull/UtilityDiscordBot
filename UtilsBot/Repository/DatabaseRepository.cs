@@ -31,7 +31,6 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
 
     public async Task AddUserAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
-        
         var user = new AllgemeinePerson
         {
             UserId = guildUserId,

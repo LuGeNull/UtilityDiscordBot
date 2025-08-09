@@ -1,3 +1,3 @@
 namespace UtilsBot.Domain.BetStart;
 
-public record BetStartResponse(int betReferenzId);
+public record BetStartResponse(int betReferenzId,  bool anfrageWarErfolgreich = true);
