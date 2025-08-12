@@ -23,7 +23,7 @@ public class LevelService
     }
     public async Task HandleRequest(MessageSentRequest request, DatabaseRepository db)
     {
-        var person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
+        var person = await db.GetUserById(request.userId);
         if (person == null)
         {
             return;
@@ -125,12 +125,12 @@ public class LevelService
     
     public async Task<XpResponse> HandleRequest(XpRequest request, DatabaseRepository db)
     {
-        var person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
+        var person = await db.GetUserById(request.userId);
         person = await WennPersonNichtExistiertDannErstellen(request, person, db);
         
-        long currentGain = person.BekommtZurzeitSoVielXp;
+        long currentGain = person.GetsSoMuchXpRightNow;
         
-        if (person.ZuletztImChannel.AddMinutes(3) < DateTime.Now)
+        if (person.LastTimeInChannel.AddMinutes(3) < DateTime.Now)
         {
             currentGain = 0;
         }
@@ -175,7 +175,7 @@ public class LevelService
         if (person == null)
         {
             await db.AddUserAsync(request.userId, request.displayName,request.guildId);
-            person = await db.HoleAllgemeinePersonMitIdAsync(request.userId);
+            person = await db.GetUserById(request.userId);
         }
         
         return person;

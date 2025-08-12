@@ -1,8 +1,10 @@
 using UtilsBot.Domain;
 using UtilsBot.Domain.BetCancel;
+using UtilsBot.Domain.BetClose;
 using UtilsBot.Domain.BetPayout;
 using UtilsBot.Domain.BetRequest;
 using UtilsBot.Domain.BetStart;
+using UtilsBot.Domain.ValueObjects;
 using UtilsBot.Repository;
 
 namespace UtilsBot.Services;
@@ -35,29 +37,52 @@ public class BetService
 
         if (aktiveBet == null)
         {
-            return new BetResponse(false, anfrageWarErfolgreich : false);
+            return new BetResponse(false, requestWasSuccesful : false);
         }
         
         if (aktiveBet.EndedAt < DateTime.Now)
         {
-            return new BetResponse(true, true, true, anfrageWarErfolgreich : false);
+            return new BetResponse(true, true, true, requestWasSuccesful : false);
         }
 
         if (!db.HatDerUserGenugXpFuerAnfrage(request.userId, request.einsatz))
         {
-            return new BetResponse(true, false, anfrageWarErfolgreich : false);
+            return new BetResponse(true, false, requestWasSuccesful : false);
         }
 
         var erfolgreich = await db.AddUserToBet(request.userId, request.einsatz, request.messageId, request.option);
         if (!erfolgreich)
         {
-            return new BetResponse(true, true, false, true , anfrageWarErfolgreich : false);
+            return new BetResponse(true, true, false, true , requestWasSuccesful : false);
         }
 
-        return new BetResponse(anfrageWarErfolgreich : true);
+        return new BetResponse(requestWasSuccesful : true);
     }
+    public bool ContainsBetsOnBothSides(Bet? bet)
+    {
+        var seiteAVorhanden = false;
+        var seiteBVorhanden = false;
+        foreach (var placement in bet.Placements)
+        {
+            if (placement.Site)
+            {
+                seiteAVorhanden = true;
+            }
 
-    public async Task<bool> IstWetteGeschlossen(ulong? messageId, DatabaseRepository db)
+            if (!placement.Site)
+            {
+                seiteBVorhanden = true;
+            }
+
+            if (seiteAVorhanden && seiteBVorhanden)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    public async Task<bool> IsBetClosed(ulong? messageId, DatabaseRepository db)
     {
         var wette = await db.GetBetAndPlacementsByMessageId(messageId);
         if (wette == null) return true;
@@ -71,7 +96,7 @@ public class BetService
         }
     }
 
-    public async Task<bool> IstDieserUserErstellerDerWette(ulong userId, ulong nachrichtId, DatabaseRepository db)
+    public async Task<bool> IsThisUserCreatorOfBet(ulong userId, ulong nachrichtId, DatabaseRepository db)
     {
         return await db.IstDieserUserErstellerDerWette(userId, nachrichtId);
     }
@@ -91,18 +116,18 @@ public class BetService
         var bet = await db.GetBetAndPlacementsByMessageId(request.messageId);
         if (bet == null)
         {
-            return new BetCancelResponse(false, true);
+            return new BetCancelResponse(false, true, anfrageWarErfolgreich: false);
         }
 
         if (bet.EndedAt > DateTime.Now)
         {
-            return new BetCancelResponse(true);
+            return new BetCancelResponse(true, anfrageWarErfolgreich: false);
         }
 
         bet.WetteWurdeAbgebrochen = true;
         foreach (var placement in bet.Placements)
         {
-            var person = await db.HoleAllgemeinePersonMitIdAsync(placement.UserId);
+            var person = await db.GetUserById(placement.UserId);
             if (person == null)
             {
                 continue;
@@ -136,7 +161,27 @@ public class BetService
 
         bet.WetteWurdeBeendet = true;
 
+
+        foreach (var userBets in bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide)))
+        {
+            
+        }
         await db.SaveChangesAsync();
         return new BetPayoutResponse(false);
+    }
+
+    private bool ConvertBetSideToBool(BetSide requestBetSide)
+    {
+        if (requestBetSide == BetSide.Yes)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public async Task HandleMessageAsync(BetCloseRequest request)
+    {
+        await WettannahmenSchliessen(request.messageId, request.db);
     }
 }

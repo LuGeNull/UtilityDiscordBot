@@ -25,7 +25,7 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
         {
             Console.WriteLine("\n");
             Console.WriteLine(
-                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, Zuletzt Online {person.ZuletztImChannel}, xp {person.Xp}");
+                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, Zuletzt Online {person.LastTimeInChannel}, xp {person.Xp}");
         }
     }
 
@@ -41,12 +41,12 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
         await SaveChangesAsync();
     }
 
-    public async Task<AllgemeinePerson?> HoleAllgemeinePersonMitIdAsync(ulong? userId)
+    public async Task<AllgemeinePerson?> GetUserById(ulong? userId)
     {
         return await _context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
-    public async Task<List<ulong>> HoleAllgemeinePersonenIdsMitGuildIdAsync(ulong guildId)
+    public async Task<List<ulong>> GetUsersByGuildId(ulong guildId)
     {
         return await _context.AllgemeinePerson
             .Where(p => p.GuildId == guildId)
@@ -82,6 +82,12 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
        return  _context.Bet.Where(b =>
                 b.ChannelId == requestChannelId && requestZeitJetzt > b.StartedAt &&
                 requestZeitJetzt < b.EndedAt).ToList();
+    }
+    
+    public async Task<Bet?> GetBet(ulong? messageId)
+    {
+        return await _context.Bet.FirstOrDefaultAsync(b =>
+            b.MessageId == messageId);
     }
     
     public bool HatDerUserGenugXpFuerAnfrage(ulong? userId, long einsatz)
@@ -134,11 +140,11 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
         await _context.SaveChangesAsync();
     }
 
-    public async Task<bool> AddUserToBet(ulong? userId, long einsatz, ulong? messageIdBet, WettOption requestOption)
+    public async Task<bool> AddUserToBet(ulong? userId, long einsatz, ulong? messageIdBet, BetSide requestOption)
     {
         var person = _context.AllgemeinePerson.First(u => u.UserId == userId);
         var bet =  _context.Bet.Include(b => b.Placements).FirstOrDefault(b => b.MessageId == messageIdBet);
-        var wettSeite = requestOption == WettOption.Ja;
+        var wettSeite = requestOption == BetSide.Yes;
         //Existiert schon wette ?
         var existiertGegenwetteVomUser = bet.Placements.FirstOrDefault(b => b.UserId == userId && b.Site == !wettSeite) ;
         if (existiertGegenwetteVomUser != null)
@@ -164,7 +170,7 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
                 DisplayName = person.DisplayName,
                 UserId = userId,
                 Einsatz = einsatz,
-                Site = requestOption == WettOption.Ja,
+                Site = requestOption == BetSide.Yes,
                 BetId = bet.Id,
                 Bet = bet
             });

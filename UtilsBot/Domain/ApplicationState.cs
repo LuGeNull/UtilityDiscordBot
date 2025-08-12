@@ -9,7 +9,7 @@ public static class ApplicationState
     public static double XpFaktorErhoehung => 1.1;
     public static string ProdToken { get; set; }
     public static int NachrichtenpunkteTaeglich => 500;
-    public static int TickProXSekunden => 60000;
+    public static int TickPerXSeconds => 60000;
     public static int BaseXp => 4;
     public static int StreamAndVideoBonus => 4;
     public static int StreamOrVideoBonus => 2;

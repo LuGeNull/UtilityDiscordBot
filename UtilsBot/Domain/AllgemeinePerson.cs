@@ -11,8 +11,8 @@ public class AllgemeinePerson
     public long Xp { get; set; }
     public int XpTodayByMessages { get; set; }
     public DateTime LastXpGainDate { get; set; }
-    public long BekommtZurzeitSoVielXp { get; set; }
-    public DateTime ZuletztImChannel { get; set; }
+    public long GetsSoMuchXpRightNow { get; set; }
+    public DateTime LastTimeInChannel { get; set; }
     public override bool Equals(object obj)
     {
         return obj is AllgemeinePerson other &&

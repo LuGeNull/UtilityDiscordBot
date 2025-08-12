@@ -1,7 +1,7 @@
 namespace UtilsBot.Domain.ValueObjects;
 
-public enum WettOption
+public enum BetSide
 {
-    Ja,
-    Nein
+    Yes,
+    No
 }

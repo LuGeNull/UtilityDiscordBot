@@ -20,7 +20,7 @@ public class Program
     {
         DatabaseMigration();
         UeberpruefeBotToken();
-        return new Program(new DiscordService(new DiscordServerChangeMonitor(), ApplicationState.Token, new BetService()))
+        return new Program(new DiscordService(ApplicationState.Token))
             .MainAsync();
     }
 
