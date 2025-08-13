@@ -30,7 +30,7 @@ public class BetServiceTest
         _betService = new BetService();
     }
     
-    [TestMethod("Bet wird angelegt")]
+    [TestMethod("Bet can be created")]
     public async Task T1()
     {
         const ulong userId = 1u;
@@ -47,7 +47,7 @@ public class BetServiceTest
         Assert.IsTrue(await _db.GetBetAndPlacementsByMessageId(messageId) != null);
     }
 
-    [TestMethod("Bet wird mit richtigen Werten angelegt")]
+    [TestMethod("Bet is created with correct values")]
     public async Task T2()
     {
         const ulong userId = 1u;
@@ -78,7 +78,7 @@ public class BetServiceTest
         var betStartRequest = new BetStartRequest(userId, guildId,title, annahmeschlussAbJetztInStunden, messageId, channelId, ereignis1Name,ereignis2Name, maxPayoutMultiplikator);
         await _betService.HandleMessageAsync(betStartRequest, _db);
     }
-    [TestMethod("User will auf eine Wette wetten, es existiert aber keine entsprechende Wette")]
+    [TestMethod("User wants to bet on a bet but there is no bet")]
     public async Task T3()
     {
         const ulong userId = 1u;
@@ -91,7 +91,7 @@ public class BetServiceTest
         Assert.IsFalse(betResponse.requestWasSuccesful);
     }
     
-    [TestMethod("User will auf eine Wette wetten, er hat aber nicht genug Xp")]
+    [TestMethod("User wants to bet on a bet but has not enough XP")]
     public async Task T4()
     {
         const ulong userId = 1u;
@@ -105,7 +105,7 @@ public class BetServiceTest
         Assert.IsFalse(betResponse.userHatGenugXp);
     }
 
-    [TestMethod("User will auf eine Wette wetten, er hat genug Xp aber wette ist bereits vorbei")]
+    [TestMethod("User bets on a bet but the betting is already closed")]
     public async Task T5()
     {
         const ulong userId = 1u;
@@ -125,7 +125,7 @@ public class BetServiceTest
         Assert.IsTrue(betResponse.BetIsAlreadyClosed);
     }
     
-    [TestMethod("User will auf eine Wette wetten und es klappt")]
+    [TestMethod("User bets on a bet and its working")]
     public async Task T6()
     {
         const ulong userId = 1u;
@@ -146,7 +146,7 @@ public class BetServiceTest
         Assert.IsFalse(wette.WetteWurdeBeendet);
         Assert.IsFalse(wette.WetteWurdeAbgebrochen);
         Assert.IsTrue(wette.MaxPayoutMultiplikator == 3);
-        Assert.IsTrue(wette.Placements.Count != 0);
+        Assert.IsTrue(wette.Placements.Count == 1);
         Assert.IsTrue(wette.Placements.First().UserId == userId);
         Assert.IsTrue(wette.Placements.First().Einsatz == 100);
         Assert.IsTrue(wette.Placements.First().Site);

@@ -161,10 +161,16 @@ public class BetService
 
         bet.WetteWurdeBeendet = true;
 
-
-        foreach (var userBets in bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide)))
+        var sumBetAmoutWinningSide = bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide))
+            .Sum(p => p.Einsatz);
+        var sumBetAmountLosingSide = bet.Placements.Where(p => p.Site != ConvertBetSideToBool(request.betSide))
+            .Sum(p => p.Einsatz);
+        foreach (var userBet in bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide)))
         {
-            
+            var percentageOfWin = (double) userBet.Einsatz / sumBetAmoutWinningSide;
+            var user =  await db.GetUserById(userBet.UserId);
+            user.Xp += userBet.Einsatz;
+            user.Xp += (long)(sumBetAmountLosingSide * percentageOfWin);
         }
         await db.SaveChangesAsync();
         return new BetPayoutResponse(false);
