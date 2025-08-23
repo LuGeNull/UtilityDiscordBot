@@ -8,6 +8,7 @@ public class BotDbContext : DbContext
     public DbSet<AllgemeinePerson>  AllgemeinePerson { get; set; }
     public DbSet<Bet> Bet { get; set; }
     public DbSet<BetPlacements> Placements { get; set; }
+    public DbSet<Role> Rollen { get; set; }
     public BotDbContext(){}
     
     public BotDbContext(DbContextOptions<BotDbContext> options)

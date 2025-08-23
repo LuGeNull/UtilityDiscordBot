@@ -1,3 +1,4 @@
+using Discord.Rest;
 using UtilsBot.Datenbank;
 using Microsoft.EntityFrameworkCore;
 using UtilsBot.Domain;
@@ -47,13 +48,21 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         return await _context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
-    public async Task<List<ulong>> GetUsersByGuildId(ulong guildId)
+    public async Task<List<ulong>> GetUserIdsByGuildIdAsync(ulong guildId)
     {
         return await _context.AllgemeinePerson
             .Where(p => p.GuildId == guildId)
             .Select(p => p.UserId)
             .ToListAsync();
     }
+    
+    public async Task<List<ulong>> GetActiveRoleIdsByGuildIdAsync(ulong guildId)
+    {
+        return await _context.AllgemeinePerson
+            .Where(p => p.GuildId == guildId && p.RoleId != 0ul).Select(p=> p.RoleId).Distinct()
+            .ToListAsync();
+    }
+    
 
     public async Task<long> HolePlatzDesUsersBeiXpAsync(ulong guildUserId)
     {
@@ -105,11 +114,6 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         }
 
         return false;
-    }
-
-    public async Task<bool> ExistiertDieWetteMitDerIdBereitsUndIstAktuell(int wettId)
-    {
-        return _context.Bet.Any(b => b.ReferenzId == wettId && DateTime.Now >= b.StartedAt && DateTime.Now <= b.EndedAt);
     }
 
     public Task<Bet?> GetBetAndPlacementsByMessageId(ulong? messageId)
@@ -193,6 +197,38 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await _context.DisposeAsync();
+       await _context.DisposeAsync();
+    }
+
+    public async Task<Role?> GetRoleAsync(int userLevel)
+    {
+        return await _context.Rollen.FirstOrDefaultAsync(r => r.Level == userLevel);
+    }
+
+    public async Task<Role> AddRoleAsync(ulong roleId, ulong channelId, int level, ulong guildId)
+    {
+        var newRole = new Role
+        {
+            Name = $"Level {level}",
+            Id = roleId,
+            ChannelId = channelId,
+            GuildId = guildId,
+            Level = level
+        };
+        await _context.Rollen.AddAsync(newRole);
+        return newRole; 
+    }
+
+
+    public async Task<List<ulong>> GetInactiveRoleIds(List<ulong> activeRoleIds)
+    {
+        return _context.Rollen.Where(r => !activeRoleIds.Contains(r.Id)).Select(r => r.Id).ToList();
+    }
+
+    public async Task RemoveInactiveRoles(List<ulong> inactiveRoles)
+    {
+        var rolesToRemove = _context.Rollen.Where(r => inactiveRoles.Contains(r.Id)).ToList();
+        _context.Rollen.RemoveRange(rolesToRemove);
+        await _context.SaveChangesAsync();
     }
 }
