@@ -182,9 +182,9 @@ public class DiscordServerChangeMonitor
     public async Task StartPeriodicCheck(DiscordSocketClient client)
     {
         await CheckServerChangesAsync(client);
-        //_checkTimer = new Timer(ApplicationState.TickPerXSeconds);
-        //_checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
-        //_checkTimer.AutoReset = true;
-        //_checkTimer.Start();
+        _checkTimer = new Timer(ApplicationState.TickPerXSeconds);
+        _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
+        _checkTimer.AutoReset = true;
+        _checkTimer.Start();
     }
 }
