@@ -9,6 +9,8 @@ public class AllgemeinePerson
     public string DisplayName { get; set; }
     public ulong GuildId { get;set;  }
     public long Xp { get; set; }
+    
+    public ulong RoleId { get;set; }
     public decimal Gold { get; set; }
     public int XpTodayByMessages { get; set; }
     public DateTime LastXpGainDate { get; set; }
