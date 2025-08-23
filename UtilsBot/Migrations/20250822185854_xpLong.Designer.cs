@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UtilsBot.Datenbank;
 
@@ -10,9 +11,11 @@ using UtilsBot.Datenbank;
 namespace UtilsBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250822185854_xpLong")]
+    partial class xpLong
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
@@ -116,19 +119,13 @@ namespace UtilsBot.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("GoldRefunded")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("GoldWon")
+                    b.Property<long>("Einsatz")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("Site")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong?>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("betAmount")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

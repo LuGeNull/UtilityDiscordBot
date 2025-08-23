@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using System.Runtime.InteropServices.JavaScript;
 
-namespace UtilsBot;
+namespace UtilsBot.Domain;
 
 public class AllgemeinePerson
 {
@@ -10,10 +9,11 @@ public class AllgemeinePerson
     public string DisplayName { get; set; }
     public ulong GuildId { get;set;  }
     public long Xp { get; set; }
+    public decimal Gold { get; set; }
     public int XpTodayByMessages { get; set; }
     public DateTime LastXpGainDate { get; set; }
-    public long BekommtZurzeitSoVielXp { get; set; }
-    public DateTime ZuletztImChannel { get; set; }
+    public long GetsSoMuchXpRightNow { get; set; }
+    public DateTime LastTimeInChannel { get; set; }
     public override bool Equals(object obj)
     {
         return obj is AllgemeinePerson other &&

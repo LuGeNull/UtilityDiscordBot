@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilsBot", "UtilsBot\UtilsBot.csproj", "{CE8D0BC3-E355-4569-AE34-0E799C6DF518}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilsBotTest", "UtilsBotTest\UtilsBotTest.csproj", "{7603A821-CB86-49E6-A773-70A684728AE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CE8D0BC3-E355-4569-AE34-0E799C6DF518}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7603A821-CB86-49E6-A773-70A684728AE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7603A821-CB86-49E6-A773-70A684728AE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7603A821-CB86-49E6-A773-70A684728AE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7603A821-CB86-49E6-A773-70A684728AE4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
