@@ -17,7 +17,7 @@ public class CommandRegistrationService
         foreach (var guildId in _client.Guilds.Select(g => g.Id))
         {
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("xp")
+                .WithName("info")
                 .WithDescription("Auskunft über deinen Fortschritt")
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("transparenz")

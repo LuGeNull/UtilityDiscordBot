@@ -91,7 +91,7 @@ public class BetServiceTest
         Assert.IsFalse(betResponse.requestWasSuccesful);
     }
     
-    [TestMethod("User wants to bet on a bet but has not enough XP")]
+    [TestMethod("User wants to bet on a bet but has not enough Gold")]
     public async Task T4()
     {
         const ulong userId = 1u;
@@ -102,7 +102,7 @@ public class BetServiceTest
         var betRequest = new BetRequest(messageId, userId, 100, BetSide.Yes) ;
         var betResponse = await _betService.HandleMessageAsync(betRequest, _db);
         Assert.IsFalse(betResponse.requestWasSuccesful);
-        Assert.IsFalse(betResponse.userHatGenugXp);
+        Assert.IsFalse(betResponse.userHatGenugGold);
     }
 
     [TestMethod("User bets on a bet but the betting is already closed")]
@@ -113,7 +113,7 @@ public class BetServiceTest
         const ulong messageId = 4u;
         await _db.AddUserAsync(userId, "TestUser", guildId);
         var person = await _db.GetUserById(userId);
-        person!.Xp = 100;
+        person!.Gold = 100;
         await _db.SaveChangesAsync();
         await CreateBet(userId, guildId, messageId);
         var wette = await _db.GetBet(messageId);
@@ -133,7 +133,7 @@ public class BetServiceTest
         const ulong messageId = 4u;
         await _db.AddUserAsync(userId, "TestUser", guildId);
         var person = await _db.GetUserById(userId);
-        person!.Xp = 100;
+        person!.Gold = 100;
         await _db.SaveChangesAsync();
         await CreateBet(userId, guildId, messageId);
         var betRequest = new BetRequest(messageId, userId, 100, BetSide.Yes) ;
@@ -141,14 +141,14 @@ public class BetServiceTest
         Assert.IsTrue(betResponse.requestWasSuccesful);
         var wette = await _db.GetBetAndPlacementsByMessageId(messageId);
         
-        Assert.IsTrue(person.Xp == 0);
+        Assert.IsTrue(person.Gold == 0);
         Assert.IsTrue(wette != null);
         Assert.IsFalse(wette.WetteWurdeBeendet);
         Assert.IsFalse(wette.WetteWurdeAbgebrochen);
         Assert.IsTrue(wette.MaxPayoutMultiplikator == 3);
         Assert.IsTrue(wette.Placements.Count == 1);
         Assert.IsTrue(wette.Placements.First().UserId == userId);
-        Assert.IsTrue(wette.Placements.First().Einsatz == 100);
+        Assert.IsTrue(wette.Placements.First().betAmount == 100);
         Assert.IsTrue(wette.Placements.First().Site);
         Assert.IsTrue(wette.Placements.First().DisplayName == "TestUser");
     }
@@ -252,7 +252,7 @@ public class BetServiceTest
         await _db.AddUserAsync(userId1, "TestUser", guildId);
         await CreateBet(userId1, guildId, messageId);
         var user = await _db.GetUserById(userId1);
-        user!.Xp = 2;
+        user!.Gold = 2;
         await _db.SaveChangesAsync();
         var betResponse1 = await _betService.HandleMessageAsync(new BetRequest(messageId,userId1,1, BetSide.Yes), _db);
         var betResponse2 = await _betService.HandleMessageAsync(new BetRequest(messageId,userId1,1, BetSide.No), _db);
@@ -274,23 +274,23 @@ public class BetServiceTest
         
         await CreateBet(userId1, guildId, messageId);
         var user = await _db.GetUserById(userId1);
-        user!.Xp = 2;
+        user!.Gold = 2;
         
         var user2 = await _db.GetUserById(userId2);
-        user2!.Xp = 5;
+        user2!.Gold = 5;
         
         await _db.SaveChangesAsync();
         
         await _betService.HandleMessageAsync(new BetRequest(messageId,userId1,1, BetSide.Yes), _db);
         await _betService.HandleMessageAsync(new BetRequest(messageId,userId2,1, BetSide.No), _db);
         
-        Assert.IsTrue(user.Xp == 1);
-        Assert.IsTrue(user2.Xp == 4);
+        Assert.IsTrue(user.Gold == 1);
+        Assert.IsTrue(user2.Gold == 4);
         await _betService.HandleMessageAsync(new BetCloseRequest(messageId, _db));
         await _betService.HandleMessageAsync(new BetCancelRequest(messageId), _db);
         
-        Assert.IsTrue(user.Xp == 2);
-        Assert.IsTrue(user2.Xp == 5);
+        Assert.IsTrue(user.Gold == 2);
+        Assert.IsTrue(user2.Gold == 5);
     }
     
     [TestMethod("User creates bet and 2 players bet on it and win is calculated correctly")]
@@ -303,15 +303,14 @@ public class BetServiceTest
         const ulong messageIdBet = 4u;
         
         await _db.AddUserAsync(userId1, "TestUser", 3u);
-       
         await _db.AddUserAsync(userId2, "TestUser2", 3u);
         
         await CreateBet(userId1, guildId, messageIdBet);
         var user = await _db.GetUserById(userId1);
-        user!.Xp = 100;
+        user!.Gold = 100;
         
         var user2 = await _db.GetUserById(userId2);
-        user2!.Xp = 500;
+        user2!.Gold = 500;
         
         await _db.SaveChangesAsync();
         
@@ -321,8 +320,56 @@ public class BetServiceTest
         await _betService.HandleMessageAsync(new BetCloseRequest(messageIdBet, _db));
         await _betService.HandleMessageAsync(new BetPayoutRequest(messageIdBet, BetSide.Yes), _db);
         
-        Assert.IsTrue(user.Xp == 200);
-        Assert.IsTrue(user2.Xp == 400);
+        Assert.IsTrue(user.Gold == 200);
+        Assert.IsTrue(user2.Gold == 400);
+    }
+    
+    [TestMethod("User creates bet and 3 players bet on it and win is calculated correctly and losing team gets refunded the balance over max payout")]
+    public async Task T16()
+    {
+        const ulong userId1 = 1u;
+        const ulong userId2 = 2u;
+        const ulong userId3 = 3u;
+        
+        const ulong guildId = 3u;
+        const ulong messageIdBet = 4u;
+        
+        await _db.AddUserAsync(userId1, "TestUser", 3u);
+        await _db.AddUserAsync(userId2, "TestUser2", 3u);
+        await _db.AddUserAsync(userId3, "TestUser3", 3u);
+        
+        await CreateBet(userId1, guildId, messageIdBet);
+        var user = await _db.GetUserById(userId1);
+        user!.Gold = 100;
+        
+        var user2 = await _db.GetUserById(userId2);
+        user2!.Gold = 500;
+        
+        var user3 = await _db.GetUserById(userId3);
+        user3!.Gold = 500;
+        
+        await _db.SaveChangesAsync();
+        
+        await _betService.HandleMessageAsync(new BetRequest(messageIdBet,userId1,100, BetSide.Yes), _db);
+        await _betService.HandleMessageAsync(new BetRequest(messageIdBet,userId2,100, BetSide.No), _db);
+        await _betService.HandleMessageAsync(new BetRequest(messageIdBet,userId3,200, BetSide.No), _db);
+        
+        await _betService.HandleMessageAsync(new BetCloseRequest(messageIdBet, _db));
+        await _betService.HandleMessageAsync(new BetPayoutRequest(messageIdBet, BetSide.Yes), _db);
+        
+        Assert.IsTrue(user.Gold == 300);
+        Assert.IsTrue(user2.Gold == 433);
+        Assert.IsTrue(user3.Gold == 367);
+
+        var bet = await _db.GetBetAndPlacementsByMessageId(messageIdBet);
+        Assert.IsTrue(bet.Placements.First(p => p.UserId == 1u).GoldWon == 200);
+        
+        Assert.IsTrue(bet.Placements.First(p => p.UserId == 2u).GoldWon == 0);
+        Assert.IsTrue(bet.Placements.First(p => p.UserId == 3u).GoldWon == 0);
+        
+        Assert.IsTrue(bet.Placements.First(p => p.UserId == 2u).GoldRefunded == 33);
+        Assert.IsTrue(bet.Placements.First(p => p.UserId == 3u).GoldRefunded == 67);
+
     }
     
 }

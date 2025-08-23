@@ -5,6 +5,7 @@ using UtilsBot.Domain.BetPayout;
 using UtilsBot.Domain.BetRequest;
 using UtilsBot.Domain.BetStart;
 using UtilsBot.Domain.ValueObjects;
+using UtilsBot.Migrations;
 using UtilsBot.Repository;
 
 namespace UtilsBot.Services;
@@ -45,7 +46,7 @@ public class BetService
             return new BetResponse(true, true, true, requestWasSuccesful : false);
         }
 
-        if (!db.HatDerUserGenugXpFuerAnfrage(request.userId, request.einsatz))
+        if (!db.DoesTheUserHaveEnoughGoldForRequest(request.userId, request.einsatz))
         {
             return new BetResponse(true, false, requestWasSuccesful : false);
         }
@@ -84,16 +85,13 @@ public class BetService
     }
     public async Task<bool> IsBetClosed(ulong? messageId, DatabaseRepository db)
     {
-        var wette = await db.GetBetAndPlacementsByMessageId(messageId);
-        if (wette == null) return true;
-        if (wette.EndedAt < DateTime.Now)
+        var bet = await db.GetBet(messageId);
+        if (bet == null) return true;
+        if (bet.EndedAt < DateTime.Now)
         {
             return true;
         }
-        else
-        {
-            return false;
-        }
+         return false;
     }
 
     public async Task<bool> IsThisUserCreatorOfBet(ulong userId, ulong nachrichtId, DatabaseRepository db)
@@ -103,7 +101,7 @@ public class BetService
 
     public async Task WettannahmenSchliessen(ulong messageId, DatabaseRepository db)
     {
-        await db.WettannahmenSchliessen(messageId);
+        await db.CloseAcceptingBets(messageId);
     }
 
     public async Task<Bet?> GetBetByMessageId(ulong messageId, DatabaseRepository db)
@@ -124,6 +122,11 @@ public class BetService
             return new BetCancelResponse(true, anfrageWarErfolgreich: false);
         }
 
+        if (bet.WetteWurdeBeendet)
+        {
+            return new BetCancelResponse(true, false, true, false);
+        }
+
         bet.WetteWurdeAbgebrochen = true;
         foreach (var placement in bet.Placements)
         {
@@ -133,8 +136,8 @@ public class BetService
                 continue;
             }
 
-            person.Xp += placement.Einsatz;
-            placement.Einsatz = 0;
+            person.Gold += placement.betAmount;
+            placement.betAmount = 0;
         }
 
         await db.SaveChangesAsync();
@@ -146,34 +149,66 @@ public class BetService
         var bet = await db.GetBetAndPlacementsByMessageId(request.messageId);
         if (bet == null)
         {
-            return new BetPayoutResponse(false, true);
+            return new BetPayoutResponse(false, true, anfrageWarErfolgreich:false);
         }
 
         if (bet.EndedAt > DateTime.Now)
         {
-            return new BetPayoutResponse(true);
+            return new BetPayoutResponse(true,anfrageWarErfolgreich:false);
         }
 
         if (bet.WetteWurdeBeendet)
         {
-            return new BetPayoutResponse(false, false, true);
+            return new BetPayoutResponse(false, false, true, false, false);
+        }
+
+        if (!ContainsBetsOnBothSides(bet))
+        {
+            return new BetPayoutResponse(false, false, false, true, false);
         }
 
         bet.WetteWurdeBeendet = true;
 
         var sumBetAmoutWinningSide = bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide))
-            .Sum(p => p.Einsatz);
+            .Sum(p => p.betAmount);
         var sumBetAmountLosingSide = bet.Placements.Where(p => p.Site != ConvertBetSideToBool(request.betSide))
-            .Sum(p => p.Einsatz);
-        foreach (var userBet in bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide)))
+            .Sum(p => p.betAmount);
+        var losingSiteBets = bet.Placements.Where(p => p.Site != ConvertBetSideToBool(request.betSide));
+        var winningSiteBets = bet.Placements.Where(p => p.Site == ConvertBetSideToBool(request.betSide)).ToList();
+        foreach (var userBet in winningSiteBets)
         {
-            var percentageOfWin = (double) userBet.Einsatz / sumBetAmoutWinningSide;
+            var percentageOfWin = (double) userBet.betAmount / sumBetAmoutWinningSide;
             var user =  await db.GetUserById(userBet.UserId);
-            user.Xp += userBet.Einsatz;
-            user.Xp += (long)(sumBetAmountLosingSide * percentageOfWin);
+            //Wenn gewinn über MaxPayout liegt
+            var actualWin = (long)(sumBetAmountLosingSide * percentageOfWin);
+            if ((long)(sumBetAmountLosingSide * percentageOfWin) > (userBet.betAmount * bet.MaxPayoutMultiplikator) - userBet.betAmount)
+            {
+                var excedingAmount = Math.Abs(userBet.betAmount * bet.MaxPayoutMultiplikator -
+                                     (long)(sumBetAmountLosingSide * percentageOfWin + userBet.betAmount));
+                actualWin -= excedingAmount;
+                
+                RefundLosingTeamExceedingWinAmount(sumBetAmountLosingSide, losingSiteBets, excedingAmount, db);
+                
+            }
+            userBet.GoldWon = actualWin;
+            user.Gold += userBet.betAmount;
+            user.Gold += actualWin;
         }
         await db.SaveChangesAsync();
         return new BetPayoutResponse(false);
+    }
+
+    private async void RefundLosingTeamExceedingWinAmount(long sumBetAmountLosingSide,
+        IEnumerable<BetPlacements> losingSiteBets, long excedingAmount, DatabaseRepository db)
+    {
+        foreach (var placement in losingSiteBets)
+        {
+            var percentage = (decimal)placement.betAmount / sumBetAmountLosingSide;
+            var refund = Convert.ToInt32(excedingAmount * percentage);
+            var user = await db.GetUserById(placement.UserId);
+            placement.GoldRefunded = refund;
+            user.Gold += refund;
+        }
     }
 
     private bool ConvertBetSideToBool(BetSide requestBetSide)

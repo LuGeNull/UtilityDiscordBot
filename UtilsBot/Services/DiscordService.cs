@@ -46,6 +46,8 @@ public class DiscordService
         await _client.LoginAsync(TokenType.Bot, _token);
         await _client.StartAsync();
 
+        await _client.SetGameAsync("Wartet auf dein /info", null, ActivityType.CustomStatus);
+        await _client.SetStatusAsync(UserStatus.Online);
         await Task.Delay(-1);
     }
 

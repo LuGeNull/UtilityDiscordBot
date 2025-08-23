@@ -2,10 +2,11 @@ using UtilsBot.Datenbank;
 using Microsoft.EntityFrameworkCore;
 using UtilsBot.Domain;
 using UtilsBot.Domain.ValueObjects;
+using UtilsBot.Services;
 
 namespace UtilsBot.Repository;
 
-public class DatabaseRepository : IDisposable, IAsyncDisposable
+public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
 {
     public async Task SaveChangesAsync()
     {
@@ -90,11 +91,15 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
             b.MessageId == messageId);
     }
     
-    public bool HatDerUserGenugXpFuerAnfrage(ulong? userId, long einsatz)
+    public bool DoesTheUserHaveEnoughGoldForRequest(ulong? userId, long betAmount)
     {
         var person = _context.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId);
-        var xp = person.Xp;
-        if (xp >= einsatz)
+        if (person == null)
+        {
+            return false;
+        }
+        var gold = person.Gold;
+        if (gold >= betAmount)
         {
             return true;
         }
@@ -128,15 +133,15 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
         return false;
     }
 
-    public async Task WettannahmenSchliessen(ulong messageId)
+    public async Task CloseAcceptingBets(ulong messageId)
     {
-        var wette = _context.Bet.First(b => b.MessageId == messageId);
-        if (wette == null)
+        var bet = _context.Bet.First(b => b.MessageId == messageId);
+        if (bet == null)
         {
             return;
         }
 
-        wette.EndedAt = DateTime.Now.AddMinutes(-1);
+        bet.EndedAt = DateTime.Now.AddMinutes(-1);
         await _context.SaveChangesAsync();
     }
 
@@ -155,7 +160,7 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
         
         if (existiertWetteVomUser != null)
         {
-            existiertWetteVomUser.Einsatz += einsatz;
+            existiertWetteVomUser.betAmount += einsatz;
         }
         else
         {
@@ -169,14 +174,14 @@ public class DatabaseRepository : IDisposable, IAsyncDisposable
                 Id = Guid.NewGuid(),
                 DisplayName = person.DisplayName,
                 UserId = userId,
-                Einsatz = einsatz,
+                betAmount = einsatz,
                 Site = requestOption == BetSide.Yes,
                 BetId = bet.Id,
                 Bet = bet
             });
         }
         
-        person.Xp -= einsatz;
+        person.Gold -= einsatz;
         await _context.SaveChangesAsync();
         return true;
     }

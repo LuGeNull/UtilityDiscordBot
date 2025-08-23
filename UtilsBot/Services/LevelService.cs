@@ -9,7 +9,7 @@ using UtilsBot.Repository;
 
 namespace UtilsBot.Services;
 
-public class LevelService
+public class LevelService : HelperService
 {
 
     public async Task<XpLeaderboardResponse> HandleRequest(XpLeaderboardRequest request, DatabaseRepository db)
@@ -123,23 +123,24 @@ public class LevelService
     }
 
     
-    public async Task<XpResponse> HandleRequest(XpRequest request, DatabaseRepository db)
+    public async Task<InfoResponse> HandleRequest(XpRequest request, DatabaseRepository db)
     {
         var person = await db.GetUserById(request.userId);
         person = await WennPersonNichtExistiertDannErstellen(request, person, db);
         
-        long currentGain = person.GetsSoMuchXpRightNow;
-        
+        long currentXpGain = person.GetsSoMuchXpRightNow;
+        var currentGoldGain = ApplicationState.DefaultGoldEarning;
         if (person.LastTimeInChannel.AddMinutes(3) < DateTime.Now)
         {
-            currentGain = 0;
+            currentGoldGain = 0;
+            currentXpGain = 0;
         }
                 
         long platzDerPerson = await db.HolePlatzDesUsersBeiXpAsync(person.UserId);
 
         int level = 1;
         long xpForNextLevel = ApplicationState.StartXp;
-        long restXp = person.Xp;
+        var restXp = person.Xp;
 
         while (restXp >= xpForNextLevel)
         {
@@ -148,16 +149,16 @@ public class LevelService
             xpForNextLevel = (int)Math.Round(xpForNextLevel * ApplicationState.XpFaktorErhoehung);
         }
 
-        long xpToNextLevel = xpForNextLevel - restXp;
+        var xpToNextLevel = xpForNextLevel - restXp;
         
-        return new XpResponse(level, person.Xp, xpToNextLevel, platzDerPerson, currentGain, person.XpTodayByMessages);
+        return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain,  currentGoldGain, person.XpTodayByMessages, ToIntDirect(person.Gold));
     }
 
-    public int BerechneLevelUndRestXp(long xp)
+    public int BerechneLevelUndRestXp(decimal xp)
     {
         int level = 1;
         long xpForNextLevel = ApplicationState.StartXp;
-        long restXp = xp;
+        var restXp = xp;
 
         while (restXp >= xpForNextLevel)
         {
@@ -181,4 +182,6 @@ public class LevelService
         return person;
     }
 }
+
+
 

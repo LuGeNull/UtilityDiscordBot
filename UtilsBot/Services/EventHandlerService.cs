@@ -15,13 +15,14 @@ using UtilsBot.Repository;
 
 namespace UtilsBot.Services;
 
-public class EventHandlerService
+public class EventHandlerService : HelperService
 {
     private readonly DiscordSocketClient _client;
     private readonly BetService _betService;
     private readonly LevelService _levelService;
     private readonly EmbedFactory _embedFactory;
     private readonly CommandRegistrationService _commandRegistrationService;
+    private readonly MessageService _messageService;
 
     public EventHandlerService(
         DiscordSocketClient client, 
@@ -35,6 +36,7 @@ public class EventHandlerService
         _levelService = levelService;
         _embedFactory = embedFactory;
         _commandRegistrationService = commandRegistrationService;
+        _messageService= new MessageService(_client);
     }
 
     public void RegisterEventHandlers()
@@ -52,7 +54,7 @@ public class EventHandlerService
         await using var db = new DatabaseRepository(new BotDbContext());
         if (component.Data.CustomId == "wette_bet")
         {
-            if (await BetOnBet(component, db)) return;
+            await BetOnBet(component, db);
         }
 
         if (component.Data.CustomId == "annahmen_abschliessen")
@@ -65,21 +67,28 @@ public class EventHandlerService
         }
         else if (component.Data.CustomId == "wette_abbrechen")
         {
-            await HandleGanzeWetteAbbrechen(component, db);
+            await HandleGanzeWetteAbbrechen(component.Message.Id, component, db);
         }
     }
 
-    private async Task HandleGanzeWetteAbbrechen(SocketMessageComponent component, DatabaseRepository db, string grund = "")
+    private async Task HandleGanzeWetteAbbrechen(ulong messageId, SocketMessageComponent component,
+        DatabaseRepository db, string grund = "")
     {
-        if (!await _betService.IsThisUserCreatorOfBet(component.User.Id, component.Message.Id, db))
+        if (!await _betService.IsThisUserCreatorOfBet(component.User.Id, messageId, db))
         {
             // Antwort an den User
             await component.FollowupAsync("Änderungen kann nur der Wettersteller machen", ephemeral: true);
             return;
         }
 
-        var response = await _betService.HandleMessageAsync(new BetCancelRequest(component.Message.Id), db);
-
+        var response = await _betService.HandleMessageAsync(new BetCancelRequest(messageId), db);
+        
+        if (response.wetteIstBereitsBeendet)
+        {
+            await component.FollowupAsync("Wette ist bereits beendet", ephemeral: true);
+            return;
+        }
+        
         if (response.wetteIstNichtZuende)
         {
             await component.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true);
@@ -92,38 +101,32 @@ public class EventHandlerService
             return;
         }
 
-        await ButtonsDeaktivieren(component, true);
-
-        // Hole aktuelle Wetten-Daten (z.B. von _betService)
-        var bet = await _betService.GetBetByMessageId(component.Message.Id, db);
-        // Baue das neue Embed mit aktualisierten Teilnehmern
-        var embed = await _embedFactory.BuildBetEmbed(
-            bet.Title,
-            bet.Ereignis1Name,
-            bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.Einsatz.ToString())))
-                .OrderByDescending(u => u.DisplayName).ToList(),
-            bet.Ereignis2Name,
-            bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.Einsatz.ToString())))
-                .OrderByDescending(u => u.DisplayName).ToList(),
-            0, true, bet.MaxPayoutMultiplikator);
-
-        var ursprungsnachrichtId = component.Message.Id;
-
-        var channel = await _client.GetChannelAsync(component.Channel.Id) as IMessageChannel;
-        if (channel == null)
-        {
-            return;
-        }
-
-        var message = await channel.GetMessageAsync(ursprungsnachrichtId) as IUserMessage;
-        // Aktualisiere die Nachricht
+      
+        //Get referenceMessage
+        var message = await _messageService.GetMessageByMessageIdAndChannelIdAsync(messageId, component.Channel.Id);
         if (message == null)
         {
             await component.FollowupAsync("Wette wurde abgebrochen " + grund, ephemeral: true);
             return;
-        }
+        }  
+        
+        // Hole aktuelle Wetten-Daten (z.B. von _betService)
+        var bet = await _betService.GetBetByMessageId(message.Id, db);
+        // Baue das neue Embed mit aktualisierten Teilnehmern
+        var embed = await _embedFactory.BuildBetEmbed(
+            bet.Title,
+            bet.Ereignis1Name,
+            bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            bet.Ereignis2Name,
+            bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            0, DateTime.MinValue,true, bet.MaxPayoutMultiplikator);
+        
+        // Aktualisiere die Nachricht
 
         await message.ModifyAsync(msg => { msg.Embed = embed; });
+        await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
         await component.FollowupAsync("Wette wurde abgebrochen " + grund, ephemeral: true);
     }
 
@@ -135,9 +138,14 @@ public class EventHandlerService
             var modal = new ModalBuilder()
                 .WithTitle("Gebe deinen Wetteinsatz ein")
                 .WithCustomId($"zahl_modal_{selected}") // Option im CustomId speichern
-                .AddTextInput("Einsatz", "zahl_input", TextInputStyle.Short, required: true);
+                .AddTextInput("Einsatz", "zahl_input", required: true);
 
             await selectMenu.RespondWithModalAsync(modal.Build());
+        }
+        
+        if (selectMenu.Data.CustomId == "bet_payout_option_select")
+        {
+            await HandleCloseBetWithResult(selectMenu);
         }
     }
 
@@ -149,33 +157,103 @@ public class EventHandlerService
             await component.FollowupAsync("Änderungen kann nur der Wettersteller machen", ephemeral: true);
             return;
         }
-        //TODO: WETTSEITE
-        var response = await _betService.HandleMessageAsync(new BetPayoutRequest(component.Message.Id, BetSide.No), db);
+        
+        var selectMenu = new SelectMenuBuilder()
+            .WithCustomId("bet_payout_option_select")
+            .WithPlaceholder("Welche Seite hat gewonnen ?")
+            .AddOption("Option A", "1")
+            .AddOption("Option B", "2");
+        await component.FollowupAsync("Wähle eine Option:",
+            components: new ComponentBuilder().WithSelectMenu(selectMenu).Build(), ephemeral: true);
+        
+    }
+
+    public async Task HandleCloseBetWithResult(SocketMessageComponent selectMenu)
+    {
+        await selectMenu.DeferAsync(true);
+        await using var db = new DatabaseRepository(new BotDbContext());
+        var payoutSide = selectMenu.Data.Values.First() == "1" ? BetSide.Yes : BetSide.No;
+        
+        if (!selectMenu.Message.Reference.MessageId.IsSpecified)
+        {
+            await selectMenu.FollowupAsync("Wette existiert nicht", ephemeral: true);
+            return;
+        }
+
+        var message =
+            await _messageService.GetMessageByMessageIdAndChannelIdAsync(selectMenu.Message.Reference.MessageId.Value,
+                (ulong)selectMenu.ChannelId!);
+        
+        if (message == null)
+        {
+            await selectMenu.FollowupAsync("Wette existiert nicht", ephemeral: true);
+            return;
+        }
+        
+        var response = await _betService.HandleMessageAsync(new BetPayoutRequest(message.Id, payoutSide), db);
         if (response.betIsNotFinished)
         {
-            await component.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true);
+            await selectMenu.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true);
+            await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
             return;
         }
 
         if (response.betDoesNotExist)
         {
-            await component.FollowupAsync("Wette existiert nicht", ephemeral: true);
+            await selectMenu.FollowupAsync("Wette existiert nicht", ephemeral: true);
+            await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
             return;
         }
 
         if (response.BetWasAlreadyClosed)
         {
-            await component.FollowupAsync("Wette wurde schon geschlossen", ephemeral: true);
+            await selectMenu.FollowupAsync("Wette wurde schon geschlossen", ephemeral: true);
+            await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
             return;
         }
 
-        var bet = await _betService.GetBetByMessageId(component.Message.Id, db);
-        if (!_betService.ContainsBetsOnBothSides(bet))
+        if (response.containsBetsOnlyOnOneSide)
         {
-            await HandleGanzeWetteAbbrechen(component, db, "weil nur auf 1 Ereignis gewettet wurde");
+            await HandleGanzeWetteAbbrechen(selectMenu.Message.Reference.MessageId.Value,selectMenu, db, "weil nur auf 1 Ereignis gewettet wurde");
+            await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
             return;
         }
+
+        await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
+        await HandleEmbedAendern(selectMenu.Message.Reference.MessageId.Value, selectMenu, db, payoutSide);
+        await selectMenu.FollowupAsync($"{(payoutSide == BetSide.Yes ? "Seite A" : "Seite B")} gewinnt ");
     }
+
+    private async Task HandleEmbedAendern(ulong messageId, SocketMessageComponent component, DatabaseRepository db,
+        BetSide payoutSide)
+    {
+        var bet = await db.GetBetAndPlacementsByMessageId(messageId);
+        var channel = await _client.GetChannelAsync(bet.ChannelId) as IMessageChannel;
+        if (channel == null)
+        {
+            return;
+        }
+
+        var message = await channel.GetMessageAsync(messageId) as IUserMessage;
+        if (message == null)
+        {
+            return;
+        }
+        
+        var embed = await _embedFactory.BuildBetEmbed(
+            bet.Title,
+            bet.Ereignis1Name,
+            bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            bet.Ereignis2Name,
+            bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            0, bet.EndedAt,false, bet.MaxPayoutMultiplikator, betIsInPayout: true, winningSide: payoutSide );
+        
+        // Aktualisiere die Nachricht
+        await message.ModifyAsync(msg => { msg.Embed = embed; });
+    }
+
 
     private async Task HandleClosingBetRequest(SocketMessageComponent component, DatabaseRepository db)
     {
@@ -187,18 +265,39 @@ public class EventHandlerService
         }
 
         await _betService.HandleMessageAsync(new BetCloseRequest(component.Message.Id, db));
-        await ButtonsDeaktivieren(component, false);
-        await component.FollowupAsync("Wettannahmen wurden geschlossen!", ephemeral: true);
+        var listOfButtonsToDeactivate = new List<Button>()
+        {
+            Button.wette_bet,
+            Button.annahmen_abschliessen
+        };
+        var message = await _messageService.GetMessageByMessageIdAndChannelIdAsync(component.Message.Id,  (ulong)component.ChannelId);
+        
+        // Hole aktuelle Wetten-Daten (z.B. von _betService)
+        var bet = await _betService.GetBetByMessageId(message.Id, db);
+        // Baue das neue Embed mit aktualisierten Teilnehmern
+        var embed = await _embedFactory.BuildBetEmbed(
+            bet.Title,
+            bet.Ereignis1Name,
+            bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            bet.Ereignis2Name,
+            bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                .OrderByDescending(u => u.DisplayName).ToList(),
+            0, bet.EndedAt,false, bet.MaxPayoutMultiplikator);
+        await message.ModifyAsync(msg => { msg.Embed = embed; });
+        await _messageService.RemoveButtonsOnMessage(component.Message.Id,component.Channel.Id, listOfButtonsToDeactivate);
     }
 
-    private async Task<bool> BetOnBet(SocketMessageComponent component, DatabaseRepository db)
+    
+    
+    private async Task BetOnBet(SocketMessageComponent component, DatabaseRepository db)
     {
         //Ist wette bereits geschlossen ?
         if (await _betService.IsBetClosed(component.Message.Id, db))
         {
             // Antwort an den User
             await component.FollowupAsync("Die Wette ist bereits geschlossen.", ephemeral: true);
-            return true;
+            return;
         }
 
         var selectMenu = new SelectMenuBuilder()
@@ -208,7 +307,6 @@ public class EventHandlerService
             .AddOption("Option B", "2");
         await component.FollowupAsync("Wähle eine Option:",
             components: new ComponentBuilder().WithSelectMenu(selectMenu).Build(), ephemeral: true);
-        return false;
     }
 
     private async Task HandleMessageReceived(SocketMessage message)
@@ -267,7 +365,13 @@ public class EventHandlerService
 
 
             var ursprungsnachrichtId = modal.Message.Reference.MessageId;
-            //DB
+            
+            if (!ursprungsnachrichtId.IsSpecified)
+            {
+                await modal.FollowupAsync("Die Ursprungsnachricht für die Wette existiert nicht mehr", ephemeral: true);
+                return;
+            }
+            //DB   
             await using var db = new DatabaseRepository(new BotDbContext());
 
             var betResponse =
@@ -293,9 +397,9 @@ public class EventHandlerService
                 return;
             }
 
-            if (!betResponse.userHatGenugXp)
+            if (!betResponse.userHatGenugGold)
             {
-                await modal.FollowupAsync("Du hast nicht genug Xp für die Wette, verringere den Einsatz",
+                await modal.FollowupAsync("Du hast nicht genug Gold für die Wette, verringere den Einsatz",
                     ephemeral: true);
                 return;
             }
@@ -317,44 +421,22 @@ public class EventHandlerService
             var embed = await _embedFactory.BuildBetEmbed(
                 bet.Title,
                 bet.Ereignis1Name,
-                bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.Einsatz.ToString())))
-                    .OrderByDescending(u => u.DisplayName).ToList() ?? new List<(string user, int einsatz)>(),
+                bet.Placements.Where(b => b.Site == true).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                    .OrderByDescending(u => u.DisplayName).ToList() ,
                 bet.Ereignis2Name,
-                bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.Einsatz.ToString())))
-                    .OrderByDescending(u => u.DisplayName).ToList() ?? new List<(string user, int einsatz)>(),
-                0, false, bet.MaxPayoutMultiplikator);
+                bet.Placements.Where(b => b.Site == false).Select(u => (u.DisplayName, int.Parse(u.betAmount.ToString()), u.GoldWon, u.GoldRefunded))
+                    .OrderByDescending(u => u.DisplayName).ToList(),
+                0, bet.EndedAt, false, bet.MaxPayoutMultiplikator, betIsInPayout:false);
 
             // Aktualisiere die Nachricht
             if (message == null)
             {
-                await modal.FollowupAsync($"Du hast {zahl} XP gewettet!", ephemeral: true);
+                await modal.FollowupAsync($"Die Nachricht zur Wette existiert nicht mehr", ephemeral: true);
                 return;
             }
 
             await message.ModifyAsync(msg => { msg.Embed = embed; });
-
-            await modal.FollowupAsync($"Du hast {zahl} XP gewettet!", ephemeral: true);
         }
-    }
-
-    private async Task ButtonsDeaktivieren(SocketMessageComponent component, bool alleButtonsDeaktivieren)
-    {
-        var disabledComponents = new ComponentBuilder();
-        foreach (var row in component.Message.Components)
-        {
-            foreach (var btn in row.Components.OfType<ButtonComponent>())
-            {
-                bool disable = true;
-                if (!alleButtonsDeaktivieren)
-                {
-                    disable = btn.CustomId != "wette_abschliessen" && btn.CustomId != "wette_abbrechen";
-                }
-
-                disabledComponents.WithButton(btn.Label, btn.CustomId, btn.Style, disabled: disable);
-            }
-        }
-
-        await component.Message.ModifyAsync(msg => { msg.Components = disabledComponents.Build(); });
     }
 
     public async void RegisterCommands()
@@ -373,11 +455,11 @@ public class EventHandlerService
     {
         await using var db = new DatabaseRepository(new BotDbContext());
 
-        if (command.CommandName == "xp")
+        if (command.CommandName == "info")
         {
             var transparenz = GetOptionValue<string>(command, "transparenz");
             var ephimeral = transparenz == "transparent";
-            await XpResponse(command, !ephimeral, db);
+            await InfoResponse(command, !ephimeral, db);
         }
 
         if (command.CommandName == "leaderboardxp")
@@ -386,8 +468,7 @@ public class EventHandlerService
             var ephemeral = transparenz == "transparent";
             await LeaderboardXpResponse(command, !ephemeral, db);
         }
-
-
+        
         if (command.CommandName == "betstart")
         {
             await command.DeferAsync();
@@ -408,10 +489,10 @@ public class EventHandlerService
             var embed = await _embedFactory.BuildBetEmbed(
                 titel,
                 ereignis1Name,
-                new List<(string user, int betAmount)>(),
+                new List<(string user, int betAmount, long goldWon, long goldRefunded)>(),
                 ereignis2Name,
-                new List<(string user, int betAmount)>(),
-                annahmeschluss,
+                new List<(string user, int betAmount, long goldWon, long goldRefunded)>(),
+                annahmeschluss,DateTime.MinValue,
                 false,
                 maxPayoutMultiplikator);
 
@@ -439,7 +520,7 @@ public class EventHandlerService
             {
                 embedBuilder
                     .AddField($"Platz {i + 1}:",
-                        $"```(LVL {_levelService.BerechneLevelUndRestXp(leaderboardResponse.personen[i].Xp)}) {leaderboardResponse.personen[i].DisplayName} ```");
+                        $"```(LVL {_levelService.BerechneLevelUndRestXp(ToIntDirect(leaderboardResponse.personen[i].Xp))}) {leaderboardResponse.personen[i].DisplayName} ```");
             }
 
             var embed = embedBuilder.Build();
@@ -453,7 +534,7 @@ public class EventHandlerService
         }
     }
 
-    private async Task XpResponse(SocketSlashCommand command, bool invisibleMessage, DatabaseRepository db)
+    private async Task InfoResponse(SocketSlashCommand command, bool invisibleMessage, DatabaseRepository db)
     {
         if (command.User is SocketGuildUser guildUser)
         {
@@ -462,7 +543,7 @@ public class EventHandlerService
                 await _levelService.HandleRequest(
                     new XpRequest(guildUser.Id, guildUser.DisplayName, guildUser.Guild.Id), db);
 
-            var embed = await _embedFactory.BuildXpEmbed(xpResponse);
+            var embed = await _embedFactory.BuildInfoEmbed(xpResponse);
 
             var followupMessage = await command.FollowupAsync(embed: embed, ephemeral: invisibleMessage);
             if (!invisibleMessage)

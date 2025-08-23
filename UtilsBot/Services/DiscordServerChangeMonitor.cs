@@ -43,7 +43,8 @@ public class DiscordServerChangeMonitor
                 var xpToGain = GetXpToGain(user);
                 localUser.GetsSoMuchXpRightNow = xpToGain;
                 localUser.Xp += xpToGain;
-                Console.WriteLine($"{localUser.DisplayName} got {xpToGain} XP ");
+                localUser.Gold += ApplicationState.DefaultGoldEarning;
+                Console.WriteLine($"{localUser.DisplayName} got {xpToGain} XP and {ApplicationState.DefaultGoldEarning} Gold ");
 
             }
         }
@@ -55,40 +56,25 @@ public class DiscordServerChangeMonitor
         if (UserIsStreamingAndVideoingAndNotMutedAndDeafended(user))
         {
             return ApplicationState.BaseXp + ApplicationState.StreamAndVideoBonus;
-            //lokalePerson.Xp += xpToGain;
-            //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-            //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         
         if (UserIsStreamingOrVideoingAndNotMutedOrDeafened(user))
         {
             return ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus;
-           // lokalePerson.Xp += xpToGain;
-           // lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-           // Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp + ApplicationState.StreamOrVideoBonus} XP bekommen");
         }
         else
         {
             if (UserIsFullMute(user))
             {
                 return ApplicationState.FullMuteBaseXp;
-                //lokalePerson.Xp += xpToGain;
-                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.FullMuteBaseXp} XP bekommen");
             }
             else if (MutedNotDeafened(user))
             {
                 return ApplicationState.OnlyMuteBaseXp;
-                //lokalePerson.Xp += xpToGain;
-                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                //Console.WriteLine($"{lokalePerson.DisplayName} hat { ApplicationState.OnlyMuteBaseXp} XP bekommen");
             }
             else
             {
                 return ApplicationState.BaseXp;
-                //lokalePerson.Xp += xpToGain;
-                //lokalePerson.BekommtZurzeitSoVielXp = xpToGain;
-                //Console.WriteLine($"{lokalePerson.DisplayName} hat {ApplicationState.BaseXp} XP bekommen");
             }
         }
     }
