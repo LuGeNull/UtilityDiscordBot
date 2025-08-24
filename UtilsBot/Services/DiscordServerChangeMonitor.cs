@@ -21,7 +21,6 @@ public class DiscordServerChangeMonitor
     private async Task CheckServerChangesAsync(DiscordSocketClient client)
     {
         await using var db = new DatabaseRepository(new BotDbContext());
-        db.DebugInfo();
         foreach (var guild in client.Guilds)
         {
             // There have to be atleast 2 in one Channel
@@ -36,8 +35,6 @@ public class DiscordServerChangeMonitor
                 {
                     await UpdateInfoUser(channel, db, client);
                 }
-                
-               
             }
         }
 
@@ -80,6 +77,10 @@ public class DiscordServerChangeMonitor
     private async Task CheckIfRolesNeedToBeAdjusted(AllgemeinePerson localUser, DiscordSocketClient client,
         SocketVoiceChannel channel, DatabaseRepository db)
     {
+        if (ApplicationState.TestMode && !ApplicationState.CreateRoles)
+        {
+            return;
+        }
         var userLevel = _levelService.BerechneLevelUndRestXp(localUser.Xp);
         //Does the Role Exist in the Database
         var role = await db.GetRoleAsync(userLevel);

@@ -20,16 +20,6 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
     {
         _context = context;
     }
-   
-    public void DebugInfo()
-    {
-        foreach (var person in _context.AllgemeinePerson)
-        {
-            Console.WriteLine("\n");
-            Console.WriteLine(
-                $"UserId: {person.UserId}, DisplayName: {person.DisplayName}, GuildId: {person.GuildId}, Zuletzt Online {person.LastTimeInChannel}, xp {person.Xp}");
-        }
-    }
 
     public async Task AddUserAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId)
     {
