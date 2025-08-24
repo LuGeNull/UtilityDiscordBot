@@ -14,8 +14,8 @@ namespace UtilsBotTest.ServicesTest;
 [TestClass]
 public class BetServiceTest
 {
-    private BetService _betService;
-    private DatabaseRepository _db;
+    private readonly BetService _betService = new ();
+    private DatabaseRepository _db = null!;
 
     [TestInitialize]
     public void Setup()
@@ -27,7 +27,6 @@ public class BetServiceTest
         var context = new BotDbContext(options);
         var db = new DatabaseRepository(context);
         _db = db;
-        _betService = new BetService();
     }
     
     [TestMethod("Bet can be created")]
@@ -63,7 +62,7 @@ public class BetServiceTest
         var betStartResponse = await _betService.HandleMessageAsync(betStartRequest, _db);
         var bet = await _db.GetBetAndPlacementsByMessageId(messageId);
         Assert.IsTrue(betStartResponse.anfrageWarErfolgreich);
-        Assert.IsTrue(bet.UserIdStartedBet == betStartRequest.userIdStartedBet);
+        Assert.IsTrue(bet!.UserIdStartedBet == betStartRequest.userIdStartedBet);
         Assert.IsTrue(bet.MessageId == betStartRequest.messageId);
     }
 
@@ -362,6 +361,7 @@ public class BetServiceTest
         Assert.IsTrue(user3.Gold == 367);
 
         var bet = await _db.GetBetAndPlacementsByMessageId(messageIdBet);
+        Assert.IsTrue(bet != null);
         Assert.IsTrue(bet.Placements.First(p => p.UserId == 1u).GoldWon == 200);
         
         Assert.IsTrue(bet.Placements.First(p => p.UserId == 2u).GoldWon == 0);
