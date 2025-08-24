@@ -25,16 +25,36 @@ public class DiscordServerChangeMonitor
         foreach (var guild in client.Guilds)
         {
             // There have to be atleast 2 in one Channel
-            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 1))
+            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
             {
                 await AddNewUserIfNecessary(channel, db);
-                await UpdateInfoUser(channel, db, client);
+                if (ApplicationState.DeleteGuildRoles)
+                {
+                    await DeleteAllRoles(channel, db, client);
+                }
+                else
+                {
+                    await UpdateInfoUser(channel, db, client);
+                }
+                
                
             }
         }
 
         await db.SaveChangesAsync();
     }
+
+    private async Task DeleteAllRoles(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
+    {
+        var roles = await db.getAllRoles();
+        var rolesDiscord = channel.Guild.Roles.Where(r => r.Name.StartsWith("Level")).ToList();
+        await _roleService.DeleteRoles(rolesDiscord);
+        
+        await db.DeleteAllRoles(roles);
+        await db.SaveChangesAsync();
+    }
+
+   
 
     private async Task UpdateInfoUser(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
     {
@@ -49,7 +69,6 @@ public class DiscordServerChangeMonitor
                 localUser.GetsSoMuchXpRightNow = xpToGain;
                 localUser.Xp += xpToGain;
                 localUser.Gold += ApplicationState.DefaultGoldEarning;
-                Console.WriteLine($"{localUser.DisplayName} got {xpToGain} XP and {ApplicationState.DefaultGoldEarning} Gold ");
                 await CheckIfRolesNeedToBeAdjusted(localUser, client, channel, db);
                 
                 await db.SaveChangesAsync();
