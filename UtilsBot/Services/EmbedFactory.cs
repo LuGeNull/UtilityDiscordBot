@@ -25,7 +25,7 @@ public class EmbedFactory
             .AddField("Dein Platz im Vergleich zu allen", $"```{infoResponse.platzDerPerson}```")
             .AddField($"Du bekommst zurzeit", $"```{infoResponse.currentXpGain} XP / MIN | {infoResponse.currentGoldGain.ToString().Replace(',', '.')} GOLD / MIN```")
             .AddField($"Nachrichtenpunkte heute verdient",
-                $"```{infoResponse.nachrichtenPunkte} XP / {ApplicationState.NachrichtenpunkteTaeglich} XP```")
+                $"```{infoResponse.nachrichtenPunkte} XP / {ApplicationState.MessagePointsDaily} XP```")
             .Build();
     }
     
