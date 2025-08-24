@@ -317,17 +317,58 @@ public class EventHandlerService : HelperService
         {
             if (message.Content.ToLower().Equals("!deletecommands"))
             {
+                if (!ApplicationState.TestMode)
+                {
+                    return;
+                }
+                await DeleteSlashCommands(message);
+                return;
+            }
+            if (message.Content.ToLower().Equals("!deletecommandsprod"))
+            {
+                if (ApplicationState.TestMode)
+                {
+                    return;
+                }
                 await DeleteSlashCommands(message);
                 return;
             }
             if (message.Content.ToLower().Equals("!deleteroles"))
             {
+                if (!ApplicationState.TestMode)
+                {
+                    return;
+                }
+                ApplicationState.DeleteGuildRoles = true;
+                await message.DeleteAsync();
+                return;
+            }
+            if (message.Content.ToLower().Equals("!deleterolesprod"))
+            {
+                if (ApplicationState.TestMode)
+                {
+                    return;
+                }
                 ApplicationState.DeleteGuildRoles = true;
                 await message.DeleteAsync();
                 return;
             }
             if (message.Content.ToLower().Equals("!dontdeleteroles"))
             {
+                if (!ApplicationState.TestMode)
+                {
+                    return;
+                }
+                ApplicationState.DeleteGuildRoles = false;
+                await message.DeleteAsync();
+                return;
+            }
+            if (message.Content.ToLower().Equals("!dontdeleterolesprod"))
+            {
+                if (ApplicationState.TestMode)
+                {
+                    return;
+                }
                 ApplicationState.DeleteGuildRoles = false;
                 await message.DeleteAsync();
                 return;
@@ -337,9 +378,6 @@ public class EventHandlerService : HelperService
         if (message.Author.IsBot) return;
         await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message), db);
     }
-
-    
-   
     
     private async Task DeleteSlashCommands(SocketMessage message)
     {

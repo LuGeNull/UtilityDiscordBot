@@ -35,7 +35,7 @@ public class LevelService : HelperService
             person.XpTodayByMessages = 0;
             person.LastXpGainDate = DateTime.Today;
         }
-        int xpAvailable = ApplicationState.NachrichtenpunkteTaeglich - person.XpTodayByMessages;
+        int xpAvailable = ApplicationState.MessagePointsDaily - person.XpTodayByMessages;
         int xpGranted = Math.Min(xpToAdd, xpAvailable);
 
         if (xpGranted > 0)
