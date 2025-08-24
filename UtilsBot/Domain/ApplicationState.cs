@@ -21,4 +21,5 @@ public static class ApplicationState
     public static int LinkMessageXpGain => 15;
     public static int VideoMessageXpGain => 25;
     public static int GifMessageXpGain => 15;
+    public static bool DeleteGuildRoles { get; set; }
 }

@@ -23,6 +23,7 @@ public class EventHandlerService : HelperService
     private readonly EmbedFactory _embedFactory;
     private readonly CommandRegistrationService _commandRegistrationService;
     private readonly MessageService _messageService;
+    private readonly RoleService _roleService;
 
     public EventHandlerService(
         DiscordSocketClient client, 
@@ -36,6 +37,7 @@ public class EventHandlerService : HelperService
         _levelService = levelService;
         _embedFactory = embedFactory;
         _commandRegistrationService = commandRegistrationService;
+        _roleService = new RoleService();
         _messageService= new MessageService(_client);
     }
 
@@ -311,6 +313,7 @@ public class EventHandlerService : HelperService
 
     private async Task HandleMessageReceived(SocketMessage message)
     {
+        await using var db = new DatabaseRepository(new BotDbContext());
         if (message.Author.Id == 478972260183441412)
         {
             if (message.Content.ToLower().Equals("!deletecommands"))
@@ -318,14 +321,27 @@ public class EventHandlerService : HelperService
                 await DeleteSlashCommands(message);
                 return;
             }
+            if (message.Content.ToLower().Equals("!deleteroles"))
+            {
+                ApplicationState.DeleteGuildRoles = true;
+                await message.DeleteAsync();
+                return;
+            }
+            if (message.Content.ToLower().Equals("!dontdeleteroles"))
+            {
+                ApplicationState.DeleteGuildRoles = false;
+                await message.DeleteAsync();
+                return;
+            }
         }
-
-        await using var db = new DatabaseRepository(new BotDbContext());
+        
         if (message.Author.IsBot) return;
         await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message), db);
-        Console.WriteLine($"Nachricht von {message.Author.Username}: {message.Content}");
     }
 
+    
+   
+    
     private async Task DeleteSlashCommands(SocketMessage message)
     {
         foreach (var guild in message.Author.MutualGuilds)

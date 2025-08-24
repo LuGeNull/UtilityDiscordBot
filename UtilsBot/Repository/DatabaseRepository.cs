@@ -231,4 +231,14 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         _context.Rollen.RemoveRange(rolesToRemove);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Role>> getAllRoles()
+    {
+        return await _context.Rollen.ToListAsync();
+    }
+
+    public async Task DeleteAllRoles(List<Role> roles)
+    {
+        _context.Rollen.RemoveRange(roles);
+    }
 }

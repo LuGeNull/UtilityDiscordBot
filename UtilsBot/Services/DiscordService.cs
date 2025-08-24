@@ -58,6 +58,7 @@ public class DiscordService
         _eventHandlerService.RegisterEventHandlers();
 
         // Kommandos registrieren und Server-Änderungen überwachen
+        ApplicationState.DeleteGuildRoles = false;
         _eventHandlerService.RegisterCommands();
         await _discordServerChangeListener.StartPeriodicCheck(_client);
     }
