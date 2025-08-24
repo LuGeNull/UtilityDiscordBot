@@ -195,8 +195,7 @@ public class EventHandlerService : HelperService
         var response = await _betService.HandleMessageAsync(new BetPayoutRequest(message.Id, payoutSide), db);
         if (response.betIsNotFinished)
         {
-            await selectMenu.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true);
-            await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
+            await selectMenu.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true); 
             return;
         }
 

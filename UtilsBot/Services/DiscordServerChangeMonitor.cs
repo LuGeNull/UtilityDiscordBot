@@ -23,7 +23,7 @@ public class DiscordServerChangeMonitor
         await using var db = new DatabaseRepository(new BotDbContext());
         foreach (var guild in client.Guilds)
         {
-            // There have to be atleast 2 in one Channel
+            // There have to be atleast 1 in one Channel
             foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
             {
                 await AddNewUserIfNecessary(channel, db);
