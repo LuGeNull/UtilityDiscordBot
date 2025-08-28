@@ -23,7 +23,7 @@ public class LevelService : HelperService
     }
     public async Task HandleRequest(MessageSentRequest request, DatabaseRepository db)
     {
-        var person = await db.GetUserById(request.userId);
+        var person = await db.GetUserById(request.userId, request.guildId);
         if (person == null)
         {
             return;
@@ -125,7 +125,7 @@ public class LevelService : HelperService
     
     public async Task<InfoResponse> HandleRequest(XpRequest request, DatabaseRepository db)
     {
-        var person = await db.GetUserById(request.userId);
+        var person = await db.GetUserById(request.userId, request.guildId);
         person = await WennPersonNichtExistiertDannErstellen(request, person, db);
         
         long currentXpGain = person.GetsSoMuchXpRightNow;
@@ -176,7 +176,7 @@ public class LevelService : HelperService
         if (person == null)
         {
             await db.AddUserAsync(request.userId, request.displayName,request.guildId);
-            person = await db.GetUserById(request.userId);
+            person = await db.GetUserById(request.userId, request.guildId);
         }
         
         return person;

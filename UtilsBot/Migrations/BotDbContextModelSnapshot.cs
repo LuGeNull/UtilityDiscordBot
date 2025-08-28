@@ -19,9 +19,9 @@ namespace UtilsBot.Migrations
 
             modelBuilder.Entity("UtilsBot.Domain.AllgemeinePerson", b =>
                 {
-                    b.Property<ulong>("UserId")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -45,13 +45,16 @@ namespace UtilsBot.Migrations
                     b.Property<ulong>("RoleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<ulong>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long>("Xp")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("XpTodayByMessages")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("UserId");
+                    b.HasKey("Id");
 
                     b.ToTable("AllgemeinePerson", (string)null);
                 });

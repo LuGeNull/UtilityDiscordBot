@@ -43,6 +43,12 @@ public class EventHandlerService : HelperService
 
     public void RegisterEventHandlers()
     {
+        _client.SlashCommandExecuted -= SlashCommandHandlerAsync;
+        _client.MessageReceived -= HandleMessageReceived;
+        _client.ModalSubmitted -= ModalSubmittedHandler;
+        _client.SelectMenuExecuted -= SelectMenuExecutedHandler;
+        _client.ButtonExecuted -= ButtonExecutedHandler;
+        
         _client.SlashCommandExecuted += SlashCommandHandlerAsync;
         _client.MessageReceived += HandleMessageReceived;
         _client.ModalSubmitted += ModalSubmittedHandler;
@@ -69,11 +75,11 @@ public class EventHandlerService : HelperService
         }
         else if (component.Data.CustomId == "wette_abbrechen")
         {
-            await HandleGanzeWetteAbbrechen(component.Message.Id, component, db);
+            await HandleGanzeWetteAbbrechen(component.Message.Id, component.GuildId, component, db);
         }
     }
 
-    private async Task HandleGanzeWetteAbbrechen(ulong messageId, SocketMessageComponent component,
+    private async Task HandleGanzeWetteAbbrechen(ulong messageId, ulong? guildId, SocketMessageComponent component,
         DatabaseRepository db, string grund = "")
     {
         if (!await _betService.IsThisUserCreatorOfBet(component.User.Id, messageId, db))
@@ -83,7 +89,7 @@ public class EventHandlerService : HelperService
             return;
         }
 
-        var response = await _betService.HandleMessageAsync(new BetCancelRequest(messageId), db);
+        var response = await _betService.HandleMessageAsync(new BetCancelRequest(messageId, guildId), db);
         
         if (response.wetteIstBereitsBeendet)
         {
@@ -192,7 +198,7 @@ public class EventHandlerService : HelperService
             return;
         }
         
-        var response = await _betService.HandleMessageAsync(new BetPayoutRequest(message.Id, payoutSide), db);
+        var response = await _betService.HandleMessageAsync(new BetPayoutRequest(message.Id, selectMenu.GuildId, payoutSide), db);
         if (response.betIsNotFinished)
         {
             await selectMenu.FollowupAsync("Wettannahmen müssen vorher geschlossen werden", ephemeral: true); 
@@ -215,7 +221,7 @@ public class EventHandlerService : HelperService
 
         if (response.containsBetsOnlyOnOneSide)
         {
-            await HandleGanzeWetteAbbrechen(selectMenu.Message.Reference.MessageId.Value,selectMenu, db, "weil nur auf 1 Ereignis gewettet wurde");
+            await HandleGanzeWetteAbbrechen(selectMenu.Message.Reference.MessageId.Value, selectMenu.GuildId, selectMenu, db, "weil nur auf 1 Ereignis gewettet wurde");
             await _messageService.RemoveButtonsOnMessage(message, new List<Button>(){Button.wette_bet, Button.annahmen_abschliessen, Button.wette_abschliessen, Button.wette_abbrechen});
             return;
         }
@@ -374,11 +380,31 @@ public class EventHandlerService : HelperService
                 return;
             }
         }
+
+        if (message.Author.IsBot)
+        {
+            return;
+        }
         
-        if (message.Author.IsBot) return;
-        await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message), db);
+        await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, GetGuildIdFromMessage(message), message), db);
     }
+    public ulong? GetGuildIdFromMessage(SocketMessage message)
+    {
+        // Überprüfen, ob die Nachricht in einem Guild-Channel ist (nicht in Direktnachrichten)
+        if (message.Channel is SocketGuildChannel guildChannel)
+        {
+            return guildChannel.Guild.Id;
+        }
     
+        // Alternative Methode, wenn der Channel ein IGuildChannel ist
+        if (message.Channel is IGuildChannel iguildChannel)
+        {
+            return iguildChannel.GuildId;
+        }
+    
+        // Wenn die Nachricht in Direktnachrichten ist, gibt es keine Guild-ID
+        return null;
+    }
     private async Task DeleteSlashCommands(SocketMessage message)
     {
         foreach (var guild in message.Author.MutualGuilds)
@@ -429,7 +455,7 @@ public class EventHandlerService : HelperService
 
             var betResponse =
                 await _betService.HandleMessageAsync(
-                    new BetRequest(ursprungsnachrichtId.Value, modal.User.Id, zahl, betSide), db);
+                    new BetRequest(ursprungsnachrichtId.Value, modal.User.Id, modal.GuildId, zahl, betSide), db);
             if (betResponse.userBetsOnBothSides)
             {
                 await modal.FollowupAsync("Du kannst nicht auf die Gegenseite wetten", ephemeral: true);

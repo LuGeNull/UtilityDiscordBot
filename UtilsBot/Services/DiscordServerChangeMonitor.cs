@@ -43,7 +43,7 @@ public class DiscordServerChangeMonitor
 
     private async Task DeleteAllRoles(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
     {
-        var roles = await db.getAllRoles();
+        var roles = await db.GetAllRoles();
         var rolesDiscord = channel.Guild.Roles.Where(r => r.Name.StartsWith("Level")).ToList();
         await _roleService.DeleteRoles(rolesDiscord);
         
@@ -58,7 +58,7 @@ public class DiscordServerChangeMonitor
         var connectedUsers = channel.ConnectedUsers;
         foreach (var user in connectedUsers)
         {
-            var localUser = await db.GetUserById(user.Id);
+            var localUser = await db.GetUserById(user.Id, channel.Guild.Id);
             if (localUser != null)
             {
                 localUser.LastTimeInChannel = DateTime.Now;
@@ -77,7 +77,7 @@ public class DiscordServerChangeMonitor
     private async Task CheckIfRolesNeedToBeAdjusted(AllgemeinePerson localUser, DiscordSocketClient client,
         SocketVoiceChannel channel, DatabaseRepository db)
     {
-        if (ApplicationState.TestMode && !ApplicationState.CreateRoles)
+        if (channel.Guild.Id != 1391414100298436698)
         {
             return;
         }

@@ -4,7 +4,8 @@ namespace UtilsBot.Domain;
 
 public class AllgemeinePerson
 {
-    [Key]
+    [Key] 
+    public Guid Id { get; set; }
     public ulong UserId { get; set;}
     public string DisplayName { get; set; }
     public ulong GuildId { get;set;  }

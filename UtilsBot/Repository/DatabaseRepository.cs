@@ -25,6 +25,7 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
     {
         var user = new AllgemeinePerson
         {
+            Id = Guid.NewGuid(),
             UserId = guildUserId,
             DisplayName = guildUserDisplayName,
             GuildId = guildId
@@ -33,9 +34,9 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         await SaveChangesAsync();
     }
 
-    public async Task<AllgemeinePerson?> GetUserById(ulong? userId)
+    public async Task<AllgemeinePerson?> GetUserById(ulong? userId, ulong? guildId)
     {
-        return await _context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId);
+        return await _context.AllgemeinePerson.FirstOrDefaultAsync(p => p.UserId == userId && p.GuildId == guildId);
     }
 
     public async Task<List<ulong>> GetUserIdsByGuildIdAsync(ulong guildId)
@@ -77,22 +78,15 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         await _context.SaveChangesAsync();
     }
     
-    public async Task<List<Bet>> GetBetWhichIsActive(ulong? requestChannelId, DateTime requestZeitJetzt)
-    {
-       return  _context.Bet.Where(b =>
-                b.ChannelId == requestChannelId && requestZeitJetzt > b.StartedAt &&
-                requestZeitJetzt < b.EndedAt).ToList();
-    }
-    
     public async Task<Bet?> GetBet(ulong? messageId)
     {
         return await _context.Bet.FirstOrDefaultAsync(b =>
             b.MessageId == messageId);
     }
     
-    public bool DoesTheUserHaveEnoughGoldForRequest(ulong? userId, long betAmount)
+    public bool DoesTheUserHaveEnoughGoldForRequest(ulong? userId, ulong? guildId, long betAmount)
     {
-        var person = _context.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId);
+        var person = _context.AllgemeinePerson.FirstOrDefault(p => p.UserId == userId && p.GuildId == guildId);
         if (person == null)
         {
             return false;
@@ -111,7 +105,7 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
        return _context.Bet.Include(b => b.Placements).FirstOrDefaultAsync(b => b.MessageId == messageId);
     }
 
-    public async Task<bool> IstDieserUserErstellerDerWette(ulong userId, ulong messageId)
+    public async Task<bool> IsThisUserCreatorOfBet(ulong userId, ulong messageId)
     {
         var bet =  await _context.Bet.FirstOrDefaultAsync(b => b.MessageId == messageId);
         if(bet == null)
@@ -222,7 +216,7 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         await _context.SaveChangesAsync();
     }
 
-    public async Task<List<Role>> getAllRoles()
+    public async Task<List<Role>> GetAllRoles()
     {
         return await _context.Rollen.ToListAsync();
     }

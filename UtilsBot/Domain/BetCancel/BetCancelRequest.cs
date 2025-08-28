@@ -1,3 +1,3 @@
 namespace UtilsBot.Domain.BetCancel;
 
-public record BetCancelRequest(ulong messageId);
+public record BetCancelRequest(ulong messageId, ulong? guildId);
