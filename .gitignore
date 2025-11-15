@@ -25,3 +25,9 @@ project.fragment.lock.json
 .env
 
 *.DotSettings.user
+/.vs/ProjectEvaluation
+/.vs/StalkerDiscordBot/DesignTimeBuild
+/.vs/StalkerDiscordBot/FileContentIndex
+/.vs/StalkerDiscordBot/v18
+/.vs/UtilityDiscordBot.slnx/FileContentIndex
+/.vs
