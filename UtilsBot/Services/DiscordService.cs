@@ -13,9 +13,6 @@ public class DiscordService
     private readonly LevelService _levelService;
     private readonly string _token;
     private readonly DiscordServerChangeMonitor _discordServerChangeListener;
-    private readonly CommandRegistrationService _commandRegistrationService;
-    private readonly EmbedFactory _embedFactory;
-    private readonly BetService _betService;
     private readonly EventHandlerService _eventHandlerService;
 
     public DiscordService(string token)
@@ -27,16 +24,14 @@ public class DiscordService
         });
         _client.Log += LogAsync;
         _levelService = new LevelService();
-        _betService = new BetService();
         _discordServerChangeListener = new DiscordServerChangeMonitor();
-        _commandRegistrationService = new CommandRegistrationService(_client);
-        _embedFactory = new EmbedFactory(new CalculatorService());
+        var commandRegistrationService = new CommandRegistrationService(_client);
+        var embedFactory = new EmbedFactory();
         _eventHandlerService = new EventHandlerService(
             _client,
-            _betService,
             _levelService,
-            _embedFactory,
-            _commandRegistrationService);
+            embedFactory,
+            commandRegistrationService);
 
         _client.Ready += ReadyAsync;
     }

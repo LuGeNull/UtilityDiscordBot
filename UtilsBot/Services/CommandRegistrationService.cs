@@ -39,21 +39,6 @@ public class CommandRegistrationService
                     .AddChoice("Nicht Transparent", "not_transparent")
                     .WithRequired(false))
                 .Build(), guildId);
-
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("betstart")
-                .WithDescription("Wettestarten")
-                .AddOption("titel", ApplicationCommandOptionType.String, "Titel der Wette", isRequired: true)
-                .AddOption("ereignis1", ApplicationCommandOptionType.String, "Name Ereignis A z.B Spanien gewinnt",
-                    isRequired: true)
-                .AddOption("ereignis2", ApplicationCommandOptionType.String, "Name Ereignis B z.B Deutschland gewinnt",
-                    isRequired: true)
-                .AddOption("annahmeschluss", ApplicationCommandOptionType.Integer, "Annahmeende in Stunden ab jetzt",
-                    isRequired: true)
-                .AddOption("maxpayoutmultiplikator", ApplicationCommandOptionType.Integer,
-                    "Was kann jemand höchstens gewinnen von seinem Einsatz - Standard = 3 für 3X Max Payout",
-                    isRequired: false)
-                .Build(), guildId);
         }
     }
     

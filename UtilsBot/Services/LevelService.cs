@@ -151,7 +151,7 @@ public class LevelService : HelperService
 
         var xpToNextLevel = xpForNextLevel - restXp;
         
-        return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain,  currentGoldGain, person.XpTodayByMessages, ToIntDirect(person.Gold));
+        return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain,  currentGoldGain, person.XpTodayByMessages);
     }
 
     public int BerechneLevelUndRestXp(decimal xp)

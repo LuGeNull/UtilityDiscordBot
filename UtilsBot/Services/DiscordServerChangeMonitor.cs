@@ -9,50 +9,25 @@ namespace UtilsBot.Services;
 
 public class DiscordServerChangeMonitor
 {
-    private Timer _checkTimer;
+    private Timer _checkTimer = new();
     private RoleService _roleService = new RoleService();
     private LevelService _levelService = new LevelService();
-
-    public DiscordServerChangeMonitor()
-    {
-        _checkTimer = new Timer();
-    }
 
     private async Task CheckServerChangesAsync(DiscordSocketClient client)
     {
         await using var db = new DatabaseRepository(new BotDbContext());
         foreach (var guild in client.Guilds)
         {
-            // There have to be atleast 1 in one Channel
-            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count > 0))
+            foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count >= 1))
             {
                 await AddNewUserIfNecessary(channel, db);
-                if (ApplicationState.DeleteGuildRoles)
-                {
-                    await DeleteAllRoles(channel, db, client);
-                }
-                else
-                {
-                    await UpdateInfoUser(channel, db, client);
-                }
+                await UpdateInfoUser(channel, db, client);
             }
         }
 
         await db.SaveChangesAsync();
     }
-
-    private async Task DeleteAllRoles(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
-    {
-        var roles = await db.getAllRoles();
-        var rolesDiscord = channel.Guild.Roles.Where(r => r.Name.StartsWith("Level")).ToList();
-        await _roleService.DeleteRoles(rolesDiscord);
-        
-        await db.DeleteAllRoles(roles);
-        await db.SaveChangesAsync();
-    }
-
-   
-
+    
     private async Task UpdateInfoUser(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
     {
         var connectedUsers = channel.ConnectedUsers;
@@ -65,7 +40,6 @@ public class DiscordServerChangeMonitor
                 var xpToGain = GetXpToGain(user);
                 localUser.GetsSoMuchXpRightNow = xpToGain;
                 localUser.Xp += xpToGain;
-                localUser.Gold += ApplicationState.DefaultGoldEarning;
                 await CheckIfRolesNeedToBeAdjusted(localUser, client, channel, db);
                 
                 await db.SaveChangesAsync();
@@ -83,12 +57,13 @@ public class DiscordServerChangeMonitor
         }
         var userLevel = _levelService.BerechneLevelUndRestXp(localUser.Xp);
         //Does the Role Exist in the Database
-        var role = await db.GetRoleAsync(userLevel);
-        if (role == null )
+        var role = await db.GetRoleAsync(userLevel, localUser.GuildId);
+        if (role == null)
         {
             //If Not Create The Role in Discord and Local And Assign to the User
             var roleId = await _roleService.CreateRole(client, channel, db, userLevel);
             await db.AddRoleAsync(roleId, channel.Id, userLevel, channel.Guild.Id);
+            await _roleService.RemoveRoleFromUserById(localUser.RoleId, localUser.UserId, channel);
             await _roleService.AssignRoleToUser(roleId, localUser.UserId, channel);
             localUser.RoleId = roleId;
             await db.SaveChangesAsync();
@@ -114,6 +89,8 @@ public class DiscordServerChangeMonitor
            var roleWhichShouldBeAssigned = user.Roles.FirstOrDefault(r => r.Id == roleId);
            if (roleWhichShouldBeAssigned == null)
            {
+               //Remove old Role from user
+               await _roleService.RemoveRoleFromUserById(localUser.RoleId, localUser.UserId, channel);
                await _roleService.AssignRoleToUser(roleId, localUser.UserId, channel);
                localUser.RoleId = roleId;
                await db.SaveChangesAsync();
@@ -130,9 +107,9 @@ public class DiscordServerChangeMonitor
         
         if (inactiveRoles.Any())
         {
-            var InActiveRoles = channel.Guild.Roles.Where(r => inactiveRoles.Contains(r.Id)).ToList();
+            var inActiveRoles = channel.Guild.Roles.Where(r => inactiveRoles.Contains(r.Id)).ToList();
             await db.RemoveInactiveRoles(inactiveRoles);
-            await _roleService.DeleteRoles(InActiveRoles);
+            await _roleService.DeleteRoles(inActiveRoles);
         }
       
     }

@@ -1,11 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using UtilsBot.Repository;
 using UtilsBot.Services;
-using Timer = System.Timers.Timer;
-using Microsoft.Extensions.Configuration;
-using UtilsBot;
 using UtilsBot.Datenbank;
 using UtilsBot.Domain;
+using DotNetEnv;
 
 public class Program
 {
@@ -34,28 +31,28 @@ public class Program
 
     private static void UeberpruefeBotToken()
     {
-        ApplicationState.TestToken = Environment.GetEnvironmentVariable("DiscordTokenTest") ?? "";
-        ApplicationState.ProdToken = Environment.GetEnvironmentVariable("DiscordToken") ?? "";
-        
-        if (string.IsNullOrEmpty(ApplicationState.TestToken) || string.IsNullOrEmpty(ApplicationState.ProdToken))
-        {
-            if (string.IsNullOrEmpty(ApplicationState.TestToken))
-            {
-                ApplicationState.TestMode = false;
-            }
-            if (string.IsNullOrEmpty(ApplicationState.ProdToken))
-            {
-                ApplicationState.TestMode = true;
-            }
+        Env.Load();
 
-            if (string.IsNullOrEmpty(ApplicationState.TestToken) && string.IsNullOrEmpty(ApplicationState.ProdToken))
-            {
-                throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
-            }
+        ApplicationState.TestToken = Env.GetString("DiscordTokenTest")
+                                     ?? Environment.GetEnvironmentVariable("DiscordTokenTest");
+
+        ApplicationState.ProdToken = Env.GetString("DiscordToken")
+                                     ?? Environment.GetEnvironmentVariable("DiscordToken");
+        if (ApplicationState.TestToken == null && ApplicationState.ProdToken == null)
+        {
+            throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
         }
-        else
+        
+        if (ApplicationState.ProdToken == null)
         {
             ApplicationState.TestMode = true;
+            return;
+        }
+        
+        if (ApplicationState.TestToken == null)
+        {
+            ApplicationState.TestMode = false;
+            return;
         }
     }
 

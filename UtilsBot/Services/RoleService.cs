@@ -69,4 +69,19 @@ public class RoleService
             await role.DeleteAsync();
         }
     }
+
+    public async Task RemoveRoleFromUserById(ulong roleId, ulong userId, SocketVoiceChannel channel)
+    {
+        var user = channel.Guild.GetUser(userId);
+        if (user != null)
+        {
+            await user.RemoveRoleAsync(roleId);
+        }
+        // Delete Role if no user has it assigned
+        var guildRole = channel.Guild.Roles.FirstOrDefault(r => r.Id == roleId);
+        if (guildRole != null && guildRole.Members.Count() == 0)
+        {
+            await guildRole.DeleteAsync();
+        }
+    }
 }
