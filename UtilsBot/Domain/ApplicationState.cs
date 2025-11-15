@@ -5,7 +5,6 @@ public static class ApplicationState
     public static bool TestMode { get; set; }
     public static string Token => TestMode ? TestToken : ProdToken;
     public static string TestToken { get; set; }
-    public static decimal DefaultGoldEarning => 0.4m;
     public static long StartXp => 400;
     public static double XpFaktorErhoehung => 1.08;
     public static string ProdToken { get; set; }

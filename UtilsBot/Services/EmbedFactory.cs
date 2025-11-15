@@ -9,14 +9,14 @@ public class EmbedFactory
     public async Task<Embed> BuildInfoEmbed(InfoResponse infoResponse)
     {
         return new EmbedBuilder()
-            .WithTitle("Dein Fortschritt")
+            .WithTitle("Your Progress")
             .WithColor(Color.DarkRed)
             .AddField("Level", $"```{infoResponse.level}```", true)
             .AddField("XP", $"```{infoResponse.xp}```", true)
-            .AddField($"XP bis Level {infoResponse.level + 1}", $"```{infoResponse.xpToNextLevel}```")
-            .AddField("Dein Platz im Vergleich zu allen", $"```{infoResponse.platzDerPerson}```")
-            .AddField($"Du bekommst zurzeit", $"```{infoResponse.currentXpGain} XP / MIN | {infoResponse.currentGoldGain.ToString().Replace(',', '.')} GOLD / MIN```")
-            .AddField($"Nachrichtenpunkte heute verdient",
+            .AddField($"XP until Level {infoResponse.level + 1}", $"```{infoResponse.xpToNextLevel}```")
+            .AddField("Your place in comparison to others", $"```{infoResponse.platzDerPerson}```")
+            .AddField($"You're currently gaining", $"```{infoResponse.currentXpGain} XP / MIN ```")
+            .AddField($"XP earned by Messages today",
                 $"```{infoResponse.nachrichtenPunkte} XP / {ApplicationState.MessagePointsDaily} XP```")
             .Build();
     }

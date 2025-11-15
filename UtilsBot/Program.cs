@@ -40,7 +40,7 @@ public class Program
                                      ?? Environment.GetEnvironmentVariable("DiscordToken");
         if (ApplicationState.TestToken == null && ApplicationState.ProdToken == null)
         {
-            throw new Exception("Discord token not found \n SET WITH -> setx DiscordToken 'tokenValue'");
+            throw new Exception(".env is missing or contains the wrong value \n Create the .env in the Folder of the Executable");
         }
         
         if (ApplicationState.ProdToken == null)

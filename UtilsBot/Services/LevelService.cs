@@ -129,10 +129,8 @@ public class LevelService : HelperService
         person = await WennPersonNichtExistiertDannErstellen(request, person, db);
         
         long currentXpGain = person.GetsSoMuchXpRightNow;
-        var currentGoldGain = ApplicationState.DefaultGoldEarning;
         if (person.LastTimeInChannel.AddMinutes(3) < DateTime.Now)
         {
-            currentGoldGain = 0;
             currentXpGain = 0;
         }
                 
@@ -151,7 +149,7 @@ public class LevelService : HelperService
 
         var xpToNextLevel = xpForNextLevel - restXp;
         
-        return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain,  currentGoldGain, person.XpTodayByMessages);
+        return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain, person.XpTodayByMessages);
     }
 
     public int BerechneLevelUndRestXp(decimal xp)
