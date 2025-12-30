@@ -28,7 +28,7 @@ public class EventHandlerService : HelperService
         _embedFactory = embedFactory;
         _commandRegistrationService = commandRegistrationService;
         _roleService = new RoleService();
-        _messageService= new MessageService(_client);
+        _messageService= new MessageService();
     }
 
     public void RegisterEventHandlers()
@@ -41,7 +41,7 @@ public class EventHandlerService : HelperService
     {
         await using var db = new DatabaseRepository(new BotDbContext());
         if (message.Author.IsBot) return;
-        await _levelService.HandleRequest(new MessageSentRequest(message.Author.Id, message), db);
+        await _messageService.HandleRequest(new MessageSentRequest(message.Author.Id, message), db);
     }
     
     private async Task DeleteSlashCommands(SocketMessage message)

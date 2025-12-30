@@ -20,7 +20,7 @@ public class DiscordService
         _token = token;
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
-            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent
+            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent  
         });
         _client.Log += LogAsync;
         _levelService = new LevelService();
@@ -51,9 +51,7 @@ public class DiscordService
         Console.WriteLine($"Online as: {_client.CurrentUser}");
         
         _eventHandlerService.RegisterEventHandlers();
-
-        // Kommandos registrieren und Server-Änderungen überwachen
-        ApplicationState.DeleteGuildRoles = false;
+        
         _eventHandlerService.RegisterCommands();
         await _discordServerChangeListener.StartPeriodicCheck(_client);
     }

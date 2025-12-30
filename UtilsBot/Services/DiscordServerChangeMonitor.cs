@@ -1,3 +1,4 @@
+using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
 using UtilsBot.Datenbank;
@@ -10,14 +11,20 @@ namespace UtilsBot.Services;
 public class DiscordServerChangeMonitor
 {
     private Timer _checkTimer = new();
-    private RoleService _roleService = new RoleService();
-    private LevelService _levelService = new LevelService();
+    private RoleService _roleService = new ();
+    private LevelService _levelService = new ();
 
     private async Task CheckServerChangesAsync(DiscordSocketClient client)
     {
         await using var db = new DatabaseRepository(new BotDbContext());
+        await client.DownloadUsersAsync(client.Guilds);
         foreach (var guild in client.Guilds)
         {
+            if(!AnyUserWithLevelRoleAlreadyAndInProduction(guild))
+            {
+                await GiveAllUsersRoles(guild.Users, db);
+            }
+            
             foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count >= 1))
             {
                 await AddNewUserIfNecessary(channel, db);
@@ -27,7 +34,53 @@ public class DiscordServerChangeMonitor
 
         await db.SaveChangesAsync();
     }
-    
+
+    private async Task GiveAllUsersRoles(IReadOnlyCollection<SocketGuildUser> guildUsers, DatabaseRepository db)
+    {
+        var neueUser = guildUsers.Select(c => c.Id)
+            .Except(await db.GetUserIdsByGuildIdAsync(guildUsers.First().Guild.Id)).ToList();
+        if (neueUser.Any())
+        {
+            foreach (var user in neueUser)
+            {
+                var userInQuestion = guildUsers.First(u => u.Id == user);
+                await db.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+            }
+        }
+        
+        foreach(var guildUser in guildUsers)
+        {
+            var localUser = await db.GetUserById(guildUser.Id);
+            var userLevel = _levelService.BerechneLevelUndRestXp(localUser.Xp);
+            //Does the Role Exist in the Database
+            var role = _roleService.GetRoleAsync(userLevel, guildUser.Guild);
+            await _roleService.RemoveUnoccupiedRolesFromUser(localUser.UserId, guildUser.Guild, userLevel);
+        
+            if (role == null)
+            {
+                //If Not Create The Role in Discord and Local And Assign to the User
+                var roleId = await _roleService.CreateRole(guildUser.Guild, userLevel);
+                //Check if User is in any role which should not be the current role
+                await _roleService.AssignRoleToUser(roleId, localUser.UserId, guildUser.Guild);
+            }
+            else
+            { 
+                //Does the user have the role assigned ?
+                var user = guildUser;
+                var doesTheUserHaveTheRoleToBeAssigned = user.Roles.FirstOrDefault(r => r.Id == role.Id) != null;
+                if (!doesTheUserHaveTheRoleToBeAssigned)
+                {
+                    await _roleService.AssignRoleToUser(role.Id, localUser.UserId, guildUser.Guild);
+                }
+            }
+        }
+    }
+
+    private static bool AnyUserWithLevelRoleAlreadyAndInProduction(SocketGuild guild)
+    {
+        return !guild.Users.Any(u => u.Roles.Where(r => r.Name.ToUpper().StartsWith("LEVEL")).Any()) && ApplicationState.ProdToken != null;
+    }
+
     private async Task UpdateInfoUser(SocketVoiceChannel channel, DatabaseRepository db, DiscordSocketClient client)
     {
         var connectedUsers = channel.ConnectedUsers;
@@ -51,67 +104,28 @@ public class DiscordServerChangeMonitor
     private async Task CheckIfRolesNeedToBeAdjusted(AllgemeinePerson localUser, DiscordSocketClient client,
         SocketVoiceChannel channel, DatabaseRepository db)
     {
-        if (ApplicationState.TestMode && !ApplicationState.CreateRoles)
-        {
-            return;
-        }
         var userLevel = _levelService.BerechneLevelUndRestXp(localUser.Xp);
         //Does the Role Exist in the Database
-        var role = await db.GetRoleAsync(userLevel, localUser.GuildId);
+        var role = _roleService.GetRoleAsync(userLevel, channel.Guild);
+        await _roleService.RemoveUnoccupiedRolesFromUser(localUser.UserId, channel.Guild, userLevel);
+        
         if (role == null)
         {
             //If Not Create The Role in Discord and Local And Assign to the User
-            var roleId = await _roleService.CreateRole(client, channel, db, userLevel);
-            await db.AddRoleAsync(roleId, channel.Id, userLevel, channel.Guild.Id);
-            await _roleService.RemoveRoleFromUserById(localUser.RoleId, localUser.UserId, channel);
-            await _roleService.AssignRoleToUser(roleId, localUser.UserId, channel);
-            localUser.RoleId = roleId;
-            await db.SaveChangesAsync();
+            var roleId = await _roleService.CreateRole(channel.Guild, userLevel);
+            //Check if User is in any role which should not be the current role
+            await _roleService.AssignRoleToUser(roleId, localUser.UserId, channel.Guild);
         }
         else
-        {
-           //Does the role still exist on the server
-           var roleDiscord = await _roleService.GetRoleByIdAsync(role.Id, channel);
-           var roleId = 0ul;
-           if (roleDiscord == null)
-           {
-               roleId = await _roleService.CreateRole(client, channel, db, userLevel);
-               localUser.RoleId = roleId;
-               await db.SaveChangesAsync();
-           }
-           else
-           {
-               roleId = roleDiscord.Id;
-           }
-           
-           //Does the user have the role assigned ? 
+        { 
+           //Does the user have the role assigned ?
            var user = channel.Guild.GetUser(localUser.UserId);
-           var roleWhichShouldBeAssigned = user.Roles.FirstOrDefault(r => r.Id == roleId);
-           if (roleWhichShouldBeAssigned == null)
+           var doesTheUserHaveTheRoleToBeAssigned = user.Roles.FirstOrDefault(r => r.Id == role.Id) != null;
+           if (!doesTheUserHaveTheRoleToBeAssigned)
            {
-               //Remove old Role from user
-               await _roleService.RemoveRoleFromUserById(localUser.RoleId, localUser.UserId, channel);
-               await _roleService.AssignRoleToUser(roleId, localUser.UserId, channel);
-               localUser.RoleId = roleId;
-               await db.SaveChangesAsync();
+               await _roleService.AssignRoleToUser(role.Id, localUser.UserId, channel.Guild);
            }
         }
-
-        await CleanUpRolesIfNecessary(channel, db);
-    }
-
-    private async Task CleanUpRolesIfNecessary(SocketVoiceChannel channel, DatabaseRepository db)
-    {
-        var activeRoleIds = await db.GetActiveRoleIdsByGuildIdAsync(channel.Guild.Id);
-        var inactiveRoles = await db.GetInactiveRoleIds(activeRoleIds);
-        
-        if (inactiveRoles.Any())
-        {
-            var inActiveRoles = channel.Guild.Roles.Where(r => inactiveRoles.Contains(r.Id)).ToList();
-            await db.RemoveInactiveRoles(inactiveRoles);
-            await _roleService.DeleteRoles(inActiveRoles);
-        }
-      
     }
 
     private int GetXpToGain(SocketGuildUser user)

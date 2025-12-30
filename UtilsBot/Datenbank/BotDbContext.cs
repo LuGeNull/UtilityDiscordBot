@@ -5,8 +5,8 @@ namespace UtilsBot.Datenbank;
 
 public class BotDbContext : DbContext
 {
-    public DbSet<AllgemeinePerson>  AllgemeinePerson { get; set; }
-    public DbSet<Role> Rollen { get; set; }
+    public DbSet<AllgemeinePerson> AllgemeinePersonen { get; set; }
+    
     public BotDbContext(){}
     
     public BotDbContext(DbContextOptions<BotDbContext> options)
@@ -15,7 +15,7 @@ public class BotDbContext : DbContext
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<AllgemeinePerson>().ToTable("AllgemeinePerson");
+        modelBuilder.Entity<AllgemeinePerson>().HasKey(p => new { p.UserId, p.GuildId });;
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)

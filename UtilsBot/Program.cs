@@ -54,6 +54,7 @@ public class Program
             ApplicationState.TestMode = false;
             return;
         }
+        Console.Write($"RUN Mode: {ApplicationState.TestMode}");
     }
 
     public async Task MainAsync()

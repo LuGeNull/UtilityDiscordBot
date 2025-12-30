@@ -8,9 +8,8 @@ namespace UtilsBot.Services;
 public class RoleService
 {
     private readonly ColorService _colorService = new ColorService();
-    public async Task<ulong> CreateRole(DiscordSocketClient client, SocketVoiceChannel channel, DatabaseRepository db, int level)
+    public async Task<ulong> CreateRole(SocketGuild guild, int level)
     {
-        var guild = channel.Guild;
         int blue = Math.Max(50, 255 - (level * 4));
         int red = Math.Max(0, 30 + (level * 2));
         int green = Math.Max(0, 60 + (level));
@@ -21,7 +20,7 @@ public class RoleService
         var role = await guild.CreateRoleAsync(
             name: $"Level {level}",
             permissions: null, // Standard-Berechtigungen
-            color: color,        // Standard-Farbe
+            color: color,       
             isHoisted: false,   // Nicht separat anzeigen
             options: null       // Keine speziellen Optionen
         );
@@ -53,9 +52,9 @@ public class RoleService
         await role.DeleteAsync();
     }
 
-    public async Task AssignRoleToUser(ulong roleId, ulong userId, SocketVoiceChannel channel)
+    public async Task AssignRoleToUser(ulong roleId, ulong userId, SocketGuild guild)
     {
-        var user = channel.Guild.GetUser(userId);
+        var user = guild.GetUser(userId);
         if (user != null)
         {
             await user.AddRoleAsync(roleId);
@@ -70,18 +69,32 @@ public class RoleService
         }
     }
 
-    public async Task RemoveRoleFromUserById(ulong roleId, ulong userId, SocketVoiceChannel channel)
+    public async Task RemoveUnoccupiedRolesFromUser(ulong userId, SocketGuild guild, int userLevel)
     {
-        var user = channel.Guild.GetUser(userId);
-        if (user != null)
+        var user = guild.GetUser(userId);
+        
+        if (user == null)
         {
-            await user.RemoveRoleAsync(roleId);
+            return;
         }
-        // Delete Role if no user has it assigned
-        var guildRole = channel.Guild.Roles.FirstOrDefault(r => r.Id == roleId);
-        if (guildRole != null && guildRole.Members.Count() == 0)
+
+        var rolesToBeRemoved = user.Roles.Where(r => !r.Name.ToUpper().Contains($"LEVEL {userLevel.ToString()}") && r.Name.ToUpper().Contains("LEVEL"));
+        if (rolesToBeRemoved.Any())
         {
-            await guildRole.DeleteAsync();
+            foreach (var role in rolesToBeRemoved)
+            {
+                await user.RemoveRoleAsync(role.Id);
+                // Wenn keiner mehr in der Rolle ist, lösche die Rolle - <= 1 weil wenn einer rausgeslöscht wurde wurde die Info noch nicht weitergegeben
+                if (role.Members.Count() <= 1)
+                {
+                    await role.DeleteAsync();
+                }
+            }
         }
+    }
+    
+    public SocketRole? GetRoleAsync(int userLevel, SocketGuild guildId)
+    {
+        return guildId.Roles.FirstOrDefault(r => r.Name == $"Level {userLevel}");
     }
 }

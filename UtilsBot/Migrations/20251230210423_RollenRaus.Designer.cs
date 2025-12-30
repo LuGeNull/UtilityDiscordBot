@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UtilsBot.Datenbank;
 
@@ -10,9 +11,11 @@ using UtilsBot.Datenbank;
 namespace UtilsBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251230210423_RollenRaus")]
+    partial class RollenRaus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
@@ -20,9 +23,7 @@ namespace UtilsBot.Migrations
             modelBuilder.Entity("UtilsBot.Domain.AllgemeinePerson", b =>
                 {
                     b.Property<ulong>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("GuildId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("DisplayName")
@@ -30,6 +31,9 @@ namespace UtilsBot.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<long>("GetsSoMuchXpRightNow")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastTimeInChannel")
@@ -44,9 +48,9 @@ namespace UtilsBot.Migrations
                     b.Property<int>("XpTodayByMessages")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("UserId", "GuildId");
+                    b.HasKey("UserId");
 
-                    b.ToTable("AllgemeinePersonen");
+                    b.ToTable("AllgemeinePerson", (string)null);
                 });
 #pragma warning restore 612, 618
         }
