@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UtilsBot.Datenbank;
 
@@ -10,9 +11,11 @@ using UtilsBot.Datenbank;
 namespace UtilsBot.Migrations
 {
     [DbContext(typeof(BotDbContext))]
-    partial class BotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612201308_AddBotSettings")]
+    partial class AddBotSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
@@ -68,7 +71,15 @@ namespace UtilsBot.Migrations
                     b.Property<string>("ContractId")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("LastPerK")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("NotifiedAt")
@@ -77,22 +88,6 @@ namespace UtilsBot.Migrations
                     b.HasKey("ContractId");
 
                     b.ToTable("WarEraContracts");
-                });
-
-            modelBuilder.Entity("UtilsBot.Domain.WarEraContractMessage", b =>
-                {
-                    b.Property<string>("ContractId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<ulong>("ChannelId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("MessageId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("ContractId", "ChannelId");
-
-                    b.ToTable("WarEraContractMessages");
                 });
 
             modelBuilder.Entity("UtilsBot.Domain.WarEraSubscription", b =>
@@ -104,17 +99,8 @@ namespace UtilsBot.Migrations
                     b.Property<ulong>("ChannelId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IncludeProContracts")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("INTEGER");
-
-                    b.Property<long>("MaximumDamage")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("MinimumRate")
-                        .HasColumnType("TEXT");
 
                     b.HasKey("GuildId");
 

@@ -7,7 +7,7 @@ public class ColorServiceTest
     private readonly ColorService _colorService =  new ColorService();
 
     [TestMethod("Richtige Konvertierung von HSV zu RGB")]
-    public async Task T1()
+    public void T1()
     {
         var r = 0;
         var g = 0;
@@ -17,11 +17,8 @@ public class ColorServiceTest
     }
     
     [TestMethod("Color changes by level")]
-    public async Task T2()
+    public void T2()
     {
-        var r = 0;
-        var g = 0;
-        var b = 0;
         var color = _colorService.GetColorFromLevel(1);
         var color2 = _colorService.GetColorFromLevel(2);
         
