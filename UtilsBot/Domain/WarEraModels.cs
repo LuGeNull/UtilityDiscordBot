@@ -53,6 +53,7 @@ public class AuctionItem
     public List<Bid> bids { get; set; } = new();
 
     public string countryName { get; set; }
+    public string targetCountryCode { get; set; } = string.Empty;
     public string battleName { get; set; }
     public string battleProgress { get; set; }
     public string roundPoints { get; set; }
@@ -123,6 +124,7 @@ public class WarEraSubscription
     public decimal MinimumRate { get; set; }
     public long MaximumDamage { get; set; }
     public bool IncludeProContracts { get; set; }
+    public string ExcludedTargetCountryCodes { get; set; } = string.Empty;
 }
 
 public class BotSetting

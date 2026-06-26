@@ -95,6 +95,27 @@ public class EventHandlerService : HelperService
             : null;
     }
 
+    private static List<string> GetInvalidCountryCodes(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return new List<string>();
+
+        return input
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(code => code.Length != 2 || !code.All(char.IsLetter))
+            .ToList();
+    }
+
+    private static string NormalizeCountryCodes(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+        return string.Join(",",
+            input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(code => code.Length == 2 && code.All(char.IsLetter))
+                .Select(code => code.ToUpperInvariant())
+                .Distinct());
+    }
+
     private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
     {
         await using var db = new DatabaseRepository(new BotDbContext());
@@ -142,6 +163,35 @@ public class EventHandlerService : HelperService
                 var msg = parts.Count > 0
                     ? $"WarEra contract notifications started ({string.Join(", ", parts)})."
                     : "WarEra contract notifications started for this guild.";
+                await command.RespondAsync(msg, ephemeral: true);
+            }
+        }
+
+        if (command.CommandName == "wareraexcludedcountries")
+        {
+            if (command.User is SocketGuildUser guildUser)
+            {
+                var countriesInput = GetOptionValue<string>(command, "countries");
+                var invalidCountryCodes = GetInvalidCountryCodes(countriesInput);
+                if (invalidCountryCodes.Any())
+                {
+                    await command.RespondAsync(
+                        $"Invalid country code(s): {string.Join(", ", invalidCountryCodes)}. Use two-letter codes like `DE,FR,US`.",
+                        ephemeral: true);
+                    return;
+                }
+
+                var excludedCountries = NormalizeCountryCodes(countriesInput);
+                var updated = await db.SetExcludedTargetCountryCodesAsync(guildUser.Guild.Id, excludedCountries);
+                if (!updated)
+                {
+                    await command.RespondAsync("Subscribe this guild first with `/warerasubscribe`.", ephemeral: true);
+                    return;
+                }
+
+                var msg = string.IsNullOrEmpty(excludedCountries)
+                    ? "Excluded target countries cleared."
+                    : $"Excluded target countries set to: {excludedCountries}.";
                 await command.RespondAsync(msg, ephemeral: true);
             }
         }
@@ -199,7 +249,8 @@ public class EventHandlerService : HelperService
                              $"- Channel: {(sub != null ? $"<#{sub.ChannelId}>" : "N/A")}\n" +
                              $"- Min Rate: {(sub != null ? $"{sub.MinimumRate:0.###} / 1k dmg" : "N/A")}\n" +
                              $"- Max Damage: {(sub != null && sub.MaximumDamage > 0 ? $"{sub.MaximumDamage:N0}" : sub != null ? "No limit" : "N/A")}\n" +
-                             $"- Pro Contracts: {(sub != null ? (sub.IncludeProContracts ? "✅ included" : "❌ skipped") : "N/A")}";
+                             $"- Pro Contracts: {(sub != null ? (sub.IncludeProContracts ? "✅ included" : "❌ skipped") : "N/A")}\n" +
+                             $"- Excluded Target Countries: {(sub != null && !string.IsNullOrEmpty(sub.ExcludedTargetCountryCodes) ? sub.ExcludedTargetCountryCodes : sub != null ? "None" : "N/A")}";
                 
                 await command.RespondAsync(status, ephemeral: true);
             }

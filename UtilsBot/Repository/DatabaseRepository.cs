@@ -132,7 +132,8 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
             {
                 GuildId = guildId,
                 ChannelId = channelId,
-                IsEnabled = true
+                IsEnabled = true,
+                ExcludedTargetCountryCodes = string.Empty
             });
         }
         else
@@ -149,11 +150,42 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
         if (subscription != null)
         {
             subscription.IsEnabled = isEnabled;
-            if (minimumRate.HasValue) subscription.MinimumRate = minimumRate.Value;
-            if (maximumDamage.HasValue) subscription.MaximumDamage = maximumDamage.Value;
-            if (includeProContracts.HasValue) subscription.IncludeProContracts = includeProContracts.Value;
+            if (minimumRate.HasValue) 
+            {
+                subscription.MinimumRate = minimumRate.Value;
+            }
+            else
+            {
+                subscription.MinimumRate = 0;
+            }
+            if (maximumDamage.HasValue)
+            {
+                subscription.MaximumDamage = maximumDamage.Value;
+            }
+            else
+            {
+                subscription.MaximumDamage = 0;
+            }
+            if (includeProContracts.HasValue)
+            {
+                subscription.IncludeProContracts = includeProContracts.Value;
+            }
+            else
+            {
+                subscription.IncludeProContracts = false;
+            }
             await SaveChangesAsync();
         }
+    }
+
+    public async Task<bool> SetExcludedTargetCountryCodesAsync(ulong guildId, string excludedTargetCountryCodes)
+    {
+        var subscription = await _context.WarEraSubscriptions.FirstOrDefaultAsync(s => s.GuildId == guildId);
+        if (subscription == null) return false;
+
+        subscription.ExcludedTargetCountryCodes = excludedTargetCountryCodes;
+        await SaveChangesAsync();
+        return true;
     }
 
     public async Task<List<WarEraSubscription>> GetActiveSubscriptionsAsync()

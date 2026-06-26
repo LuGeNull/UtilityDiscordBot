@@ -66,6 +66,16 @@ public class CommandRegistrationService
                 .Build(), guildId);
 
             await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+                .WithName("wareraexcludedcountries")
+                .WithDescription("Set target country codes to skip for WarEra contracts")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("countries")
+                    .WithDescription("Comma-separated target country codes to skip. Omit to clear (e.g. DE,FR,US).")
+                    .WithType(ApplicationCommandOptionType.String)
+                    .WithRequired(false))
+                .Build(), guildId);
+
+            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
                 .WithName("endsearch")
                 .WithDescription("Stop WarEra contract notifications for this guild")
                 .Build(), guildId);

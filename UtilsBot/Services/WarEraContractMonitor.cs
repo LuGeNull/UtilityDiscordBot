@@ -35,6 +35,7 @@ public class WarEraContractMonitor
         try
         {
             await using var db = new DatabaseRepository(new BotDbContext());
+            
             var activeSubscriptions = await db.GetActiveSubscriptionsAsync();
             
             if (!activeSubscriptions.Any())
@@ -85,9 +86,22 @@ public class WarEraContractMonitor
 
         foreach (var sub in subscriptions)
         {
-            if (item.professionalsOnly && !sub.IncludeProContracts) continue;
-            if (item.currentPerK < sub.MinimumRate) continue;
-            if (sub.MaximumDamage > 0 && item.minimumDamage > sub.MaximumDamage) continue;
+            if (item.professionalsOnly && !sub.IncludeProContracts)
+            {
+                continue;
+            }
+            if (sub.MinimumRate != 0 && item.currentPerK < sub.MinimumRate)
+            {
+                continue;
+            }
+            if (sub.MaximumDamage != 0 && sub.MaximumDamage > 0 && item.minimumDamage > sub.MaximumDamage)
+            {
+                continue;
+            }
+            if (IsTargetCountryExcluded(item, sub))
+            {
+                continue;
+            }
 
             try
             {
@@ -102,6 +116,19 @@ public class WarEraContractMonitor
                 Console.WriteLine($"Error notifying contract {item.id} to channel {sub.ChannelId} (Guild {sub.GuildId}): {ex.Message}");
             }
         }
+    }
+
+    private static bool IsTargetCountryExcluded(AuctionItem item, WarEraSubscription subscription)
+    {
+        if (string.IsNullOrEmpty(item.targetCountryCode) ||
+            string.IsNullOrWhiteSpace(subscription.ExcludedTargetCountryCodes))
+        {
+            return false;
+        }
+
+        return subscription.ExcludedTargetCountryCodes
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Contains(item.targetCountryCode, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task CleanupEndedContracts(HashSet<string> activeIds, DatabaseRepository db)

@@ -65,6 +65,7 @@ public class WarEraService
         }
 
         var battle = await GetBattleAsync(item.battle, apiKey);
+        item.targetCountryCode = ResolveCountryCode(GetOpponentCountryId(battle, item.country)) ?? string.Empty;
         item.battleName = BuildBattleName(battle, item.country, item.forCountrySide, item.battle);
         item.battleProgress = BuildBattleProgress(battle);
 
@@ -132,12 +133,28 @@ public class WarEraService
         return attacker;
     }
 
+    private string? GetOpponentCountryId(WarEraBattle battle, string issuerCountryId)
+    {
+        if (battle == null) return null;
+
+        var attackerCountryId = battle.attacker?.country;
+        var defenderCountryId = battle.defender?.country;
+
+        return attackerCountryId == issuerCountryId ? defenderCountryId : attackerCountryId;
+    }
+
     private string ResolveCountry(string id)
     {
         if (string.IsNullOrEmpty(id)) return "Unknown";
         if (!_countries.TryGetValue(id, out var c)) return id;
         var flag = CodeToFlag(c.code);
         return string.IsNullOrEmpty(flag) ? c.name : $"{flag} {c.name}";
+    }
+
+    private string? ResolveCountryCode(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        return _countries.TryGetValue(id, out var c) ? c.code?.ToUpperInvariant() : null;
     }
 
     private string ResolveRegion(string id) =>
