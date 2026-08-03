@@ -2,7 +2,6 @@
 using UtilsBot.Services;
 using UtilsBot.Datenbank;
 using UtilsBot.Domain;
-using UtilsBot.Repository;
 using DotNetEnv;
 
 public class Program
@@ -18,22 +17,8 @@ public class Program
     {
         DatabaseMigration();
         UeberpruefeBotToken();
-        LoadSettingsFromDatabase().Wait();
         return new Program(new DiscordService(ApplicationState.Token))
             .MainAsync();
-    }
-
-    private static async Task LoadSettingsFromDatabase()
-    {
-        await using (var db = new BotDbContext())
-        {
-            var repository = new DatabaseRepository(db);
-            var apiKey = await repository.GetSettingAsync("WarEraApiKey");
-            if (!string.IsNullOrEmpty(apiKey))
-            {
-                ApplicationState.WarEraApiKey = apiKey;
-            }
-        }
     }
 
     private static void DatabaseMigration()
@@ -53,16 +38,6 @@ public class Program
 
         ApplicationState.ProdToken = Env.GetString("DiscordToken")
                                      ?? Environment.GetEnvironmentVariable("DiscordToken");
-
-        ApplicationState.WarEraApiKey = Env.GetString("WarEraApiKey")
-                                        ?? Environment.GetEnvironmentVariable("WarEraApiKey");
-
-        var channelIdStr = Env.GetString("WarEraNotificationChannelId")
-                           ?? Environment.GetEnvironmentVariable("WarEraNotificationChannelId");
-        if (ulong.TryParse(channelIdStr, out var channelId))
-        {
-            ApplicationState.WarEraNotificationChannelId = channelId;
-        }
 
         if (ApplicationState.TestToken == null && ApplicationState.ProdToken == null)
         {

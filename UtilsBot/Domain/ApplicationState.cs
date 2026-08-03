@@ -22,7 +22,4 @@ public static class ApplicationState
     public static int GifMessageXpGain => 25;
     public static bool DeleteGuildRoles { get; set; }
     public static bool CreateRoles => false;
-    public static string WarEraApiKey { get; set; }
-    public static ulong WarEraNotificationChannelId { get; set; }
-    public static int WarEraCheckIntervalSeconds => 10;
 }

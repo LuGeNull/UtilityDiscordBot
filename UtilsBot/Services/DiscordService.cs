@@ -1,9 +1,5 @@
-using System.Net.Mime;
 using Discord;
 using Discord.WebSocket;
-using UtilsBot.Datenbank;
-using UtilsBot.Domain;
-using UtilsBot.Repository;
 
 namespace UtilsBot.Services;
 
@@ -14,7 +10,6 @@ public class DiscordService
     private readonly string _token;
     private readonly DiscordServerChangeMonitor _discordServerChangeListener;
     private readonly EventHandlerService _eventHandlerService;
-    private readonly WarEraContractMonitor _warEraContractMonitor;
 
     public DiscordService(string token)
     {
@@ -26,15 +21,13 @@ public class DiscordService
         _client.Log += LogAsync;
         _levelService = new LevelService();
         _discordServerChangeListener = new DiscordServerChangeMonitor();
-        _warEraContractMonitor = new WarEraContractMonitor(new WarEraService());
         var commandRegistrationService = new CommandRegistrationService(_client);
         var embedFactory = new EmbedFactory();
         _eventHandlerService = new EventHandlerService(
             _client,
             _levelService,
             embedFactory,
-            commandRegistrationService,
-            _warEraContractMonitor);
+            commandRegistrationService);
 
         _client.Ready += ReadyAsync;
     }
@@ -57,7 +50,6 @@ public class DiscordService
         
         _eventHandlerService.RegisterCommands();
         await _discordServerChangeListener.StartPeriodicCheck(_client);
-        await _warEraContractMonitor.StartMonitoring(_client);
     }
 
 
