@@ -136,12 +136,6 @@ public class EventHandlerService : HelperService
             return;
         }
 
-        if (!guildUser.GuildPermissions.Administrator)
-        {
-            await command.RespondAsync("Dafür brauchst du Administrator-Rechte.", ephemeral: true);
-            return;
-        }
-
         await command.DeferAsync(ephemeral: true);
 
         var guild = guildUser.Guild;
