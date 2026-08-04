@@ -24,6 +24,9 @@ project.fragment.lock.json
 # Umgebungsvariablen/Secrets
 .env
 
+# Laufzeit-Datenbank (liegt jetzt im Repo-Root fuer den Docker-Bind-Mount)
+/Data/
+
 *.DotSettings.user
 /.vs/ProjectEvaluation
 /.vs/StalkerDiscordBot/DesignTimeBuild
