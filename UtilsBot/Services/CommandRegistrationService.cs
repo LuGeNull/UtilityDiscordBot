@@ -16,30 +16,47 @@ public class CommandRegistrationService
     {
         foreach (var guildId in _client.Guilds.Select(g => g.Id))
         {
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("info")
-                .WithDescription("Auskunft über deinen Fortschritt")
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("transparenz")
-                    .WithDescription("Wähle die Transparenz")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .AddChoice("Transparent", "transparent")
-                    .AddChoice("Nicht Transparent", "not_transparent")
-                    .WithRequired(false))
-                .Build(), guildId);
-
-            await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-                .WithName("leaderboardxp")
-                .WithDescription("Auskunft über die XP der Top 8")
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("transparenz")
-                    .WithDescription("Wähle die Transparenz")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .AddChoice("Transparent", "transparent")
-                    .AddChoice("Nicht Transparent", "not_transparent")
-                    .WithRequired(false))
-                .Build(), guildId);
+            try
+            {
+                await RegisterCommandsForGuild(guildId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CommandRegistrationService] Konnte Commands fuer Guild {guildId} nicht registrieren: {ex}");
+            }
         }
+    }
+
+    private async Task RegisterCommandsForGuild(ulong guildId)
+    {
+        await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+            .WithName("info")
+            .WithDescription("Auskunft über deinen Fortschritt")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("transparenz")
+                .WithDescription("Wähle die Transparenz")
+                .WithType(ApplicationCommandOptionType.String)
+                .AddChoice("Transparent", "transparent")
+                .AddChoice("Nicht Transparent", "not_transparent")
+                .WithRequired(false))
+            .Build(), guildId);
+
+        await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+            .WithName("leaderboardxp")
+            .WithDescription("Auskunft über die XP der Top 8")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("transparenz")
+                .WithDescription("Wähle die Transparenz")
+                .WithType(ApplicationCommandOptionType.String)
+                .AddChoice("Transparent", "transparent")
+                .AddChoice("Nicht Transparent", "not_transparent")
+                .WithRequired(false))
+            .Build(), guildId);
+
+        await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
+            .WithName("rebuild-database")
+            .WithDescription("Baut die Datenbank anhand der aktuellen Level-Rollen der Mitglieder wieder auf (nur Admins)")
+            .Build(), guildId);
     }
     
 }

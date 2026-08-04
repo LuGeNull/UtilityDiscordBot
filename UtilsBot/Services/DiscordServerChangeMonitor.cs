@@ -22,7 +22,7 @@ public class DiscordServerChangeMonitor
         {
             if(!AnyUserWithLevelRoleAlreadyAndInProduction(guild))
             {
-                await GiveAllUsersRoles(guild.Users, db);
+                await GiveAllUsersRoles(guild.Users.Where(u => !u.IsBot).ToList(), db);
             }
             
             foreach (var channel in guild.VoiceChannels.Where(vc => vc.ConnectedUsers.Count >= 1))
@@ -37,6 +37,11 @@ public class DiscordServerChangeMonitor
 
     private async Task GiveAllUsersRoles(IReadOnlyCollection<SocketGuildUser> guildUsers, DatabaseRepository db)
     {
+        if (!guildUsers.Any())
+        {
+            return;
+        }
+
         var neueUser = guildUsers.Select(c => c.Id)
             .Except(await db.GetUserIdsByGuildIdAsync(guildUsers.First().Guild.Id)).ToList();
         if (neueUser.Any())
@@ -44,13 +49,19 @@ public class DiscordServerChangeMonitor
             foreach (var user in neueUser)
             {
                 var userInQuestion = guildUsers.First(u => u.Id == user);
-                await db.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                var vorhandenesLevel = _roleService.ErmittleHoechstesLevelAusRollen(userInQuestion);
+                var startXp = vorhandenesLevel > 0 ? _levelService.BerechneMinimumXpFuerLevel(vorhandenesLevel) : 0;
+                await db.UpsertUserWithXpAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id, startXp);
             }
         }
-        
+
         foreach(var guildUser in guildUsers)
         {
             var localUser = await db.GetUserById(guildUser.Id);
+            if (localUser == null)
+            {
+                continue;
+            }
             var userLevel = _levelService.BerechneLevelUndRestXp(localUser.Xp);
             //Does the Role Exist in the Database
             var role = _roleService.GetRoleAsync(userLevel, guildUser.Guild);
@@ -178,24 +189,44 @@ public class DiscordServerChangeMonitor
 
     private async Task AddNewUserIfNecessary(SocketVoiceChannel channel, DatabaseRepository db)
     {
-        var neueUser = channel.ConnectedUsers.Select(c => c.Id)
+        var connectedHumans = channel.ConnectedUsers.Where(u => !u.IsBot).ToList();
+        if (!connectedHumans.Any())
+        {
+            return;
+        }
+
+        var neueUser = connectedHumans.Select(c => c.Id)
             .Except(await db.GetUserIdsByGuildIdAsync(channel.Guild.Id)).ToList();
         if (neueUser.Any())
         {
             foreach (var user in neueUser)
             {
-                var userInQuestion = channel.ConnectedUsers.First(u => u.Id == user);
-                await db.AddUserAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id);
+                var userInQuestion = connectedHumans.First(u => u.Id == user);
+                var vorhandenesLevel = _roleService.ErmittleHoechstesLevelAusRollen(userInQuestion);
+                var startXp = vorhandenesLevel > 0 ? _levelService.BerechneMinimumXpFuerLevel(vorhandenesLevel) : 0;
+                await db.UpsertUserWithXpAsync(userInQuestion.Id, userInQuestion.DisplayName, userInQuestion.Guild.Id, startXp);
             }
         }
     }
 
     public async Task StartPeriodicCheck(DiscordSocketClient client)
     {
-        await CheckServerChangesAsync(client);
+        await CheckServerChangesSicherAsync(client);
         _checkTimer = new Timer(ApplicationState.TickPerXSeconds);
-        _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesAsync(client);
+        _checkTimer.Elapsed += async (sender, e) => await CheckServerChangesSicherAsync(client);
         _checkTimer.AutoReset = true;
         _checkTimer.Start();
+    }
+
+    private async Task CheckServerChangesSicherAsync(DiscordSocketClient client)
+    {
+        try
+        {
+            await CheckServerChangesAsync(client);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DiscordServerChangeMonitor] Fehler im periodischen Check: {ex}");
+        }
     }
 }

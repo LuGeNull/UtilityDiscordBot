@@ -63,6 +63,31 @@ public class DatabaseRepository : HelperService, IDisposable, IAsyncDisposable
             .ToListAsync();
     }
 
+    public async Task<bool> UpsertUserWithXpAsync(ulong guildUserId, string guildUserDisplayName, ulong guildId, long xp)
+    {
+        var user = await _context.AllgemeinePersonen
+            .FirstOrDefaultAsync(p => p.UserId == guildUserId && p.GuildId == guildId);
+        var existierteVorher = user != null;
+
+        if (user == null)
+        {
+            user = new AllgemeinePerson
+            {
+                UserId = guildUserId,
+                GuildId = guildId,
+                LastXpGainDate = DateTime.Now,
+                LastTimeInChannel = DateTime.Now
+            };
+            _context.AllgemeinePersonen.Add(user);
+        }
+
+        user.DisplayName = guildUserDisplayName;
+        user.Xp = xp;
+
+        await SaveChangesAsync();
+        return existierteVorher;
+    }
+
     public void Dispose()
     {
         _context.Dispose();

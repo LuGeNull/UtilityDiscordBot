@@ -24,7 +24,7 @@ public class RoleService
             isHoisted: false,   // Nicht separat anzeigen
             options: null       // Keine speziellen Optionen
         );
-        var maxPosition = guild.CurrentUser.Roles.Max(r => r.Position);
+        var maxPosition = guild.CurrentUser.Roles.Any() ? guild.CurrentUser.Roles.Max(r => r.Position) : 0;
         await role.ModifyAsync(props => {
             props.Position = maxPosition;
         });
@@ -96,5 +96,27 @@ public class RoleService
     public SocketRole? GetRoleAsync(int userLevel, SocketGuild guildId)
     {
         return guildId.Roles.FirstOrDefault(r => r.Name == $"Level {userLevel}");
+    }
+
+    public int ErmittleHoechstesLevelAusRollen(SocketGuildUser user)
+    {
+        return user.Roles
+            .Select(r => VersucheLevelAusRollenNamenZuLesen(r.Name))
+            .Where(level => level.HasValue)
+            .Select(level => level!.Value)
+            .DefaultIfEmpty()
+            .Max();
+    }
+
+    public static int? VersucheLevelAusRollenNamenZuLesen(string roleName)
+    {
+        const string prefix = "Level ";
+        if (!roleName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var levelTeil = roleName[prefix.Length..].Trim();
+        return int.TryParse(levelTeil, out var level) ? level : null;
     }
 }

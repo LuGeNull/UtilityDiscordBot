@@ -72,7 +72,7 @@ public class MessageService()
 
     private bool MessageIsVideo(SocketMessage message)
     {
-        if(message.Attachments.Any(e => e.ContentType.ToLower().Contains("video")))
+        if(message.Attachments.Any(e => e.ContentType != null && e.ContentType.ToLower().Contains("video")))
         {
             return true;
         }

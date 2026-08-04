@@ -47,6 +47,20 @@ public class LevelService : HelperService
         return new InfoResponse(level, ToIntDirect(person.Xp), ToIntDirect(xpToNextLevel), platzDerPerson, currentXpGain, person.XpTodayByMessages);
     }
 
+    public long BerechneMinimumXpFuerLevel(int level)
+    {
+        long totalXp = 0;
+        long xpForNextLevel = ApplicationState.StartXp;
+
+        for (int currentLevel = 1; currentLevel < level; currentLevel++)
+        {
+            totalXp += xpForNextLevel;
+            xpForNextLevel = (int)Math.Round(xpForNextLevel * ApplicationState.XpFaktorErhoehung);
+        }
+
+        return totalXp;
+    }
+
     public int BerechneLevelUndRestXp(decimal xp)
     {
         int level = 1;
