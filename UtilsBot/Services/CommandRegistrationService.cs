@@ -52,11 +52,6 @@ public class CommandRegistrationService
                 .AddChoice("Nicht Transparent", "not_transparent")
                 .WithRequired(false))
             .Build(), guildId);
-
-        await _client.Rest.CreateGuildCommand(new SlashCommandBuilder()
-            .WithName("rebuild-database")
-            .WithDescription("Baut die Datenbank anhand der aktuellen Level-Rollen der Mitglieder wieder auf (nur Admins)")
-            .Build(), guildId);
     }
     
 }

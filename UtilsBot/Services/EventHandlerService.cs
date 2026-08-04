@@ -97,11 +97,6 @@ public class EventHandlerService : HelperService
                 var ephemeral = transparenz == "transparent";
                 await LeaderboardXpResponse(command, !ephemeral, db);
             }
-
-            if (command.CommandName == "rebuild-database")
-            {
-                await RebuildDatabaseResponse(command, db);
-            }
         }
         catch (Exception ex)
         {
@@ -127,56 +122,6 @@ public class EventHandlerService : HelperService
                 // Nutzer konnte nicht benachrichtigt werden - kein weiterer Handlungsbedarf
             }
         }
-    }
-
-    private async Task RebuildDatabaseResponse(SocketSlashCommand command, DatabaseRepository db)
-    {
-        if (command.User is not SocketGuildUser guildUser)
-        {
-            return;
-        }
-
-        await command.DeferAsync(ephemeral: true);
-
-        var guild = guildUser.Guild;
-        await guild.DownloadUsersAsync();
-
-        int erstellt = 0;
-        int aktualisiert = 0;
-        int uebersprungen = 0;
-        int fehler = 0;
-
-        foreach (var member in guild.Users)
-        {
-            if (member.IsBot) continue;
-
-            try
-            {
-                var hoechstesLevel = _roleService.ErmittleHoechstesLevelAusRollen(member);
-
-                if (hoechstesLevel == 0)
-                {
-                    uebersprungen++;
-                    continue;
-                }
-
-                var minimumXp = _levelService.BerechneMinimumXpFuerLevel(hoechstesLevel);
-                var existierteVorher = await db.UpsertUserWithXpAsync(member.Id, member.DisplayName, guild.Id, minimumXp);
-
-                if (existierteVorher) aktualisiert++;
-                else erstellt++;
-            }
-            catch (Exception ex)
-            {
-                fehler++;
-                Console.WriteLine($"[EventHandlerService] Fehler beim Wiederherstellen von Nutzer {member.Id}: {ex}");
-            }
-        }
-
-        var fehlerHinweis = fehler > 0 ? $", {fehler} mit Fehler" : "";
-        await command.FollowupAsync(
-            $"Datenbank wiederhergestellt: {erstellt} neu angelegt, {aktualisiert} aktualisiert, {uebersprungen} ohne Level-Rolle übersprungen{fehlerHinweis}.",
-            ephemeral: true);
     }
 
     private async Task LeaderboardXpResponse(SocketSlashCommand command, bool invisibleMessage, DatabaseRepository db)
